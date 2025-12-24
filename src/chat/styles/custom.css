@@ -1,0 +1,113 @@
+/* Only non-Tailwind things live here: font-family var, bubble tail masks, calc radii, keyframes. */
+
+.chat-font {
+  font-family: var(--chat-font);
+}
+
+/* Bubble shape (Tailwind handles spacing/color/typography; CSS handles calc + mask-friendly border) */
+.chat-bubble-shape {
+  --s: 0.3em; /* tail size */
+  --r: 0.55em; /* corner radius */
+
+  border: var(--s) solid transparent;
+  border-radius: calc(var(--r) + var(--s));
+  background-clip: padding-box;
+}
+
+/* Tail only when last-in-group */
+.chat-tail-user {
+  background-clip: border-box;
+  border-bottom-right-radius: 0;
+  -webkit-mask:
+    radial-gradient(100% 100% at 100% 0, transparent 99%, #000 102%)
+      100% calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    linear-gradient(#000 0 0) padding-box;
+  mask:
+    radial-gradient(100% 100% at 100% 0, transparent 99%, #000 102%)
+      100% calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    linear-gradient(#000 0 0) padding-box;
+}
+
+.chat-tail-staff {
+  background-clip: border-box;
+  border-bottom-left-radius: 0;
+  -webkit-mask:
+    radial-gradient(100% 100% at 0 0, transparent 99%, #000 102%)
+      0 calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    linear-gradient(#000 0 0) padding-box;
+  mask:
+    radial-gradient(100% 100% at 0 0, transparent 99%, #000 102%)
+      0 calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    linear-gradient(#000 0 0) padding-box;
+}
+
+/* Typing indicator (dot1 -> dot2 -> dot3, pause) */
+.typing-dot {
+  animation-duration: var(--typing-cycle, 2.2s);
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+.typing-dot--1 {
+  animation-name: typingDot1;
+}
+.typing-dot--2 {
+  animation-name: typingDot2;
+}
+.typing-dot--3 {
+  animation-name: typingDot3;
+}
+
+@keyframes typingDot1 {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  10% {
+    transform: translateY(calc(-1 * var(--bounce-height, 2px)));
+  }
+  20% {
+    transform: translateY(var(--bounce-height, 2px));
+  }
+  30% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes typingDot2 {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(calc(-1 * var(--bounce-height, 2px)));
+  }
+  30% {
+    transform: translateY(var(--bounce-height, 2px));
+  }
+  40% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes typingDot3 {
+  0%,
+  55%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(calc(-1 * var(--bounce-height, 2px)));
+  }
+  40% {
+    transform: translateY(var(--bounce-height, 2px));
+  }
+  50% {
+    transform: translateY(0);
+  }
+}
+
+
