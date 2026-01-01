@@ -7,6 +7,7 @@ import ChatComposer from './ChatComposer'
 import TypingIndicator from './TypingIndicator'
 import { sampleMessages } from './sampleMessages'
 import './styles/custom.css'
+import { verifyChat } from '../api/verify'
 
 const MOBILE_MAX_WIDTH_PX = 768
 const CLOSE_ANIMATION_MS = 320
@@ -14,7 +15,13 @@ const SUPPORT_TITLE = 'Support'
 const SUPPORT_META = 'Typically replies in ~5 min'
 const SUPPORT_EMAIL_HREF = 'mailto:support@example.com'
 
-export default function ChatWidget() {
+type WidgetProps = {
+  api_key:string
+  bot_id: string
+}
+
+
+export default function ChatWidget(props: WidgetProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [closingFullscreen, setClosingFullscreen] = useState(false)
@@ -26,17 +33,10 @@ export default function ChatWidget() {
   const layoutFullscreen = effectiveFullscreen || closingFullscreen
 
   const closeChat = () => {
-    // If we're currently fullscreen (or mobile fullscreen), keep fullscreen layout
-    // for the fade-out so it doesn't jump to docked positioning mid-transition.
     if (layoutFullscreen) setClosingFullscreen(true)
     setIsOpen(false)
   }
 
-  const panelClass = [
-    'chat-panel',
-    layoutFullscreen ? 'chat-panel--fullscreen' : 'chat-panel--docked',
-    isOpen ? 'chat-panel--open' : 'chat-panel--closed',
-  ].join(' ')
 
   useEffect(() => {
     if (isOpen || !closingFullscreen) return
@@ -48,6 +48,33 @@ export default function ChatWidget() {
 
     return () => window.clearTimeout(t)
   }, [isOpen, closingFullscreen])
+
+  const endChat = () => {
+    sessionStorage.removeItem('conversation_id')
+    sessionStorage.removeItem('token')
+    //call database to end the conversation
+    //update the database to set the conversation to disconnected.
+    //close the websocket connection
+  }
+
+  useEffect(() => {
+    if (isOpen && !sessionStorage.getItem('conversation_id')) {
+      (async () => {
+        try {
+          const data = await verifyChat({ domain: window.location.hostname, api_key: props.api_key, bot_id: props.bot_id })
+          const { conversation_id, token } = data
+          sessionStorage.setItem('conversation_id', conversation_id)
+          sessionStorage.setItem('token', token)
+        } catch (error) {
+          console.error(error)
+        }
+      })()
+    }
+    return () => {
+      endChat()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[isOpen])
 
   return (
     <div
