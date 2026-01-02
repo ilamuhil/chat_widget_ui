@@ -8,7 +8,7 @@ function getRoleGroup(role: Message['role']): 'user' | 'staff' {
 }
 
 
-export function getInitials(name?: string | null, role?: Role): string {
+export function getInitials(name?: string | null, role?: Role | string): string {
   const cleaned = (name ?? '').trim().replace(/\s+/g, ' ')
   if (cleaned) {
     const parts = cleaned.split(' ').filter(Boolean)

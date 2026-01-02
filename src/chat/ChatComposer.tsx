@@ -5,6 +5,7 @@ export default function ChatComposer(props: {
   showBranding?: boolean
   brandingHref?: string
   brandingLabel?: string
+  onSend: (message: string) => void
 }) {
   const { showBranding = false, brandingHref = 'https://example.com', brandingLabel = 'Sample' } = props
 
@@ -12,8 +13,9 @@ export default function ChatComposer(props: {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleSend = () => {
-    if (!value.trim()) return
-    console.log('Sending message:', value)
+    const text = value.trim()
+    if (!text) return
+    props.onSend(text)
     setValue('')
   }
 

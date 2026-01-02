@@ -3,7 +3,7 @@ import axios from 'axios'
 export type VerificationRequest = {
   domain: string
   api_key: string
-  bot_id: string
+  bot_id: number
 }
 
 export type VerificationResponse = {
@@ -21,7 +21,7 @@ export async function verifyChat({
     throw new Error('Missing VITE_API_URL_BASE')
   }
   try {
-    const response = await axios.post<VerifyChatResponse>(`${API_URL_BASE}/api/auth/user/chat`, {
+    const response = await axios.post<VerificationResponse>(`${API_URL_BASE}/api/auth/user/chat`, {
       domain,
       api_key,
       bot_id,
@@ -30,8 +30,11 @@ export async function verifyChat({
     console.log(response.data)
     return response.data
   } catch (error) {
-    console.error("Authentication Failed",error?.response?.data)
-    console.error(error)
+    if (axios.isAxiosError(error)) {
+      console.error('Authentication Failed', error.response?.data)
+    } else {
+      console.error('Authentication Failed', error)
+    }
     throw error
   }
 }

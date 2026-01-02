@@ -6,7 +6,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/embeding/inject.ts',
-      name: 'chat-widget-ui',
+      name: 'chatWidgetUi',
       fileName: 'chat-widget-ui',
       formats: ['iife'],
     },

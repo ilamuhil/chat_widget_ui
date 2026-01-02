@@ -4,5 +4,10 @@ import App from "./App";
 
 
 export function mountWidget(div: HTMLElement, chatConfig: Record<string, unknown>) {
-  createRoot(div).render(<StrictMode><App config={chatConfig} />{ console.log("running from chat root")}</StrictMode>)
+  console.log("running from chat root")
+  createRoot(div).render(
+    <StrictMode>
+      <App config={chatConfig} />
+    </StrictMode>,
+  )
 }
