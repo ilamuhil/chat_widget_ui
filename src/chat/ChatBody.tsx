@@ -1,19 +1,6 @@
-import { getMessageMeta, type Role } from '../helpers'
-
-type ChatMessage = {
-  role: Role
-  content: string
-  contentType: string
-  timestamp: string
-  agentName?: string
-}
-
-const toHHmm = (ts: string) => {
-  // timestamp is stored as 'YYYY-MM-DD HH:mm:ss' in sample data
-  const parts = ts.split(' ')
-  if (parts.length >= 2) return parts[1].slice(0, 5) // HH:mm
-  return ts
-}
+import { getMessageMeta } from '../helpers'
+import type { ChatMessage } from './types'
+import { toHHmm } from './utils/time'
 
 export default function ChatBody(props: { messages: Array<ChatMessage> }) {
   const messagesMeta = getMessageMeta(props.messages)

@@ -3,7 +3,7 @@ import axios from 'axios'
 export type VerificationRequest = {
   domain: string
   api_key: string
-  bot_id: number
+  bot_id: string
 }
 
 export type VerificationResponse = {
