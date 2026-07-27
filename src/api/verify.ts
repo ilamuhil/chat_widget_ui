@@ -1,7 +1,18 @@
 import axios from 'axios'
 
+export type BotConfig = {
+  tone: string
+  role: string
+  firstMessage: string
+  confirmationMessage: string
+  leadCaptureMessage: string
+  leadCaptureTiming: string
+  captureName: boolean
+  captureEmail: boolean
+  capturePhone: boolean
+}
+
 export type VerificationRequest = {
-  domain: string
   api_key: string
   bot_id: string
 }
@@ -9,10 +20,10 @@ export type VerificationRequest = {
 export type VerificationResponse = {
   conversation_id: string
   token: string
+  bot_config?: BotConfig
 }
 
 export async function verifyChat({
-  domain,
   api_key,
   bot_id,
 }: VerificationRequest): Promise<VerificationResponse> {
@@ -21,12 +32,11 @@ export async function verifyChat({
     throw new Error('Missing VITE_API_URL_BASE')
   }
   try {
-    const response = await axios.post<VerificationResponse>(`${API_URL_BASE}/api/auth/user/chat`, {
-      domain,
+    const response = await axios.post<VerificationResponse>(`${API_URL_BASE}/api/auth/user/token`, {
       api_key,
       bot_id,
     })
-    console.log("Authentication Successful")
+    console.log('Authentication Successful')
     console.log(response.data)
     return response.data
   } catch (error) {

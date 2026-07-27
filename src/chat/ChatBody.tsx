@@ -50,7 +50,7 @@ export default function ChatBody(props: { messages: Array<ChatMessage> }) {
                 ].join(' ')}>
                 {showAvatar && (
                   <div
-                    className='inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-slate-900/10 text-[10px] font-semibold tracking-[-0.02em] text-slate-900/70'>
+                    className='inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-900/10 text-[10px] font-semibold tracking-[-0.02em] text-slate-900/70'>
                     {message.initials}
                   </div>
                 )}

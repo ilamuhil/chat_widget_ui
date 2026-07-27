@@ -2,12 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { IconPaperclip, IconSend } from '../assets/icons'
 
 export default function ChatComposer(props: {
-  showBranding?: boolean
-  brandingHref?: string
-  brandingLabel?: string
   onSend: (message: string) => void
 }) {
-  const { showBranding = false, brandingHref = 'https://example.com', brandingLabel = 'Sample' } = props
 
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -23,7 +19,7 @@ export default function ChatComposer(props: {
     const el = textareaRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    el.style.height = value.trim() ? `${el.scrollHeight}px` : '36px'
   }, [value])
 
   return (
@@ -37,7 +33,7 @@ export default function ChatComposer(props: {
         </label>
 
         <textarea
-          className='pointer-events-auto min-h-9 flex-1 resize-none rounded-xl bg-slate-900/5 px-3 py-1.5 text-[13px] leading-[1.25] tracking-[-0.01em] text-slate-900 outline-none placeholder:text-[12px] placeholder:italic placeholder:text-slate-900/50'
+          className='pointer-events-auto h-9 min-h-9 flex-1 resize-none rounded-xl bg-slate-900/5 px-3 py-2 text-[13px] leading-5 tracking-[-0.01em] text-slate-900 outline-none placeholder:text-[13px] placeholder:italic placeholder:text-slate-900/50'
           value={value}
           onChange={e => setValue(e.target.value)}
           placeholder='Type a message…'
@@ -63,19 +59,6 @@ export default function ChatComposer(props: {
           <IconSend />
         </button>
       </div>
-
-      {showBranding && (
-        <div className='mt-1 select-none px-1 text-[10px] leading-none text-slate-900/45'>
-          Powered by{' '}
-          <a
-            className='text-slate-900/60 hover:text-slate-900/80 hover:underline'
-            href={brandingHref}
-            target='_blank'
-            rel='noreferrer noopener'>
-            {brandingLabel}
-          </a>
-        </div>
-      )}
     </div>
   )
 }

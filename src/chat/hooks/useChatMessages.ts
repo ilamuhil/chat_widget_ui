@@ -1,9 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
-import { ReadyState } from 'react-use-websocket'
 import type { ChatMessage, Role, ServerErrorEvent, ServerMessageEvent, ServerTypingEvent } from '../types'
 import { formatTimestamp } from '../utils/time'
 
-type Sender = { readyState: ReadyState; sendJsonMessage: (data: unknown) => void }
+import type { SocketReadyState } from './useChatSocket'
+
+type Sender = {
+  readyState: SocketReadyState
+  sendJsonMessage: (data: Record<string, unknown>) => void
+}
 
 export function useChatMessages() {
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
@@ -30,7 +34,7 @@ export function useChatMessages() {
       setMessages(prev => [...prev, outgoing])
 
       const sender = senderRef.current
-      if (sender && sender.readyState === ReadyState.OPEN) {
+      if (sender && sender.readyState === "open") {
         // Server reads either `message` or `content`.
         sender.sendJsonMessage({ content, contentType: 'text' })
       }

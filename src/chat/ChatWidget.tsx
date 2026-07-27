@@ -31,12 +31,10 @@ export default function ChatWidget(props: WidgetProps) {
   const isMobile = useIsMobile(MOBILE_MAX_WIDTH_PX)
   const effectiveFullscreen = isMobile ? isOpen : isFullscreen
   const layoutFullscreen = effectiveFullscreen || closingFullscreen
-  const domain = typeof window !== 'undefined' ? window.location.hostname : ''
 
   const { token, conversationId, isAuthenticating, authFailed, clearSession, ensureSession } = useChatSession({
     api_key: props.api_key,
     bot_id: props.bot_id,
-    domain,
   })
 
   const { messages, isTyping, appendUserMessage, clearMessages, handleServerJson, handleSocketClose, setSender } =
@@ -46,7 +44,7 @@ export default function ChatWidget(props: WidgetProps) {
     isOpen,
     token,
     conversationId,
-    onJsonMessage: handleServerJson,
+    onServerMessage: handleServerJson,
     onClose: handleSocketClose,
   })
 
@@ -57,7 +55,6 @@ export default function ChatWidget(props: WidgetProps) {
   const endChat = () => {
     clearSession()
     clearMessages()
-    closeChat()
   }
 
   const openChat = () => {
@@ -150,7 +147,7 @@ export default function ChatWidget(props: WidgetProps) {
               }
         }
         role='dialog'
-        aria-hidden={!isOpen}>
+        >
         <div className='flex items-center justify-between gap-3 border-b border-slate-900/10 px-3.5 py-3'>
           <div className='min-w-0 flex flex-col gap-1'>
             <div className='min-w-0 flex items-center gap-2'>
@@ -224,9 +221,6 @@ export default function ChatWidget(props: WidgetProps) {
         </div>
 
         <ChatComposer
-          showBranding
-          brandingHref='https://example.com'
-          brandingLabel='Sample'
           onSend={handleSend}
         />
       </div>
