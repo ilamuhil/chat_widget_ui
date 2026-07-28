@@ -21,8 +21,8 @@ export type ServerMessageEvent = {
   type?: 'message' | string
   role?: Role | string
   agentName?: string
-  message?: string
-  content?: string
+  message?: unknown
+  content?: unknown
   conversation_id?: string
 }
 

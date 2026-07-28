@@ -110,4 +110,194 @@
   }
 }
 
+.chat-markdown {
+  --md-border: color-mix(in srgb, currentColor 14%, transparent);
+  --md-muted: color-mix(in srgb, currentColor 68%, transparent);
+  --md-surface: color-mix(in srgb, currentColor 7%, transparent);
+  --md-surface-strong: color-mix(in srgb, currentColor 11%, transparent);
 
+  white-space: normal;
+  line-height: 1.5;
+}
+
+.chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown p,
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4,
+.chat-markdown ul,
+.chat-markdown ol,
+.chat-markdown pre,
+.chat-markdown blockquote,
+.chat-markdown .chat-table-wrap,
+.chat-markdown dl,
+.chat-markdown hr {
+  margin: 0.7em 0;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  color: inherit;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.chat-markdown h1 {
+  font-size: 1.3em;
+}
+
+.chat-markdown h2 {
+  font-size: 1.18em;
+}
+
+.chat-markdown h3,
+.chat-markdown h4 {
+  font-size: 1.06em;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.35em;
+}
+
+.chat-markdown ul {
+  list-style: disc;
+}
+
+.chat-markdown ol {
+  list-style: decimal;
+}
+
+.chat-markdown li + li {
+  margin-top: 0.24em;
+}
+
+.chat-markdown li > ul,
+.chat-markdown li > ol {
+  margin: 0.2em 0;
+}
+
+.chat-markdown code {
+  border: 1px solid var(--md-border);
+  border-radius: 0.3em;
+  background: var(--md-surface);
+  padding: 0.08em 0.3em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+}
+
+.chat-markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--md-border);
+  border-radius: 0.55em;
+  background: var(--md-surface);
+  padding: 0.75em 0.85em;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.chat-markdown pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.chat-markdown a {
+  color: inherit;
+  font-weight: 550;
+  text-decoration: underline;
+  text-decoration-color: var(--md-muted);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.chat-markdown blockquote {
+  border-left: 2px solid var(--md-muted);
+  padding: 0.15em 0 0.15em 0.75em;
+  color: var(--md-muted);
+}
+
+.chat-markdown hr {
+  height: 1px;
+  border: 0;
+  background: var(--md-border);
+}
+
+.chat-markdown .chat-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 0.55em;
+}
+
+.chat-markdown table {
+  display: table;
+  width: 100%;
+  min-width: max-content;
+  border: 1px solid var(--md-border);
+  border-radius: 0.55em;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: color-mix(in srgb, white 32%, transparent);
+  font-size: 0.9em;
+  table-layout: auto;
+  white-space: nowrap;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  border: 0;
+  border-bottom: 1px solid var(--md-border);
+  padding: 0.55em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.chat-markdown th {
+  background: var(--md-surface);
+  color: var(--md-muted);
+  font-size: 0.88em;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.chat-markdown tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.chat-markdown tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.chat-markdown tbody tr:hover {
+  background: var(--md-surface);
+}
+
+.chat-markdown dt {
+  margin-top: 0.55em;
+  font-weight: 650;
+}
+
+.chat-markdown dd {
+  margin: 0.12em 0 0 0.9em;
+  color: var(--md-muted);
+}
+
+.chat-markdown sup {
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: super;
+}

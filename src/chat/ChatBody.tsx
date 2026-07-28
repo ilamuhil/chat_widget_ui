@@ -1,16 +1,54 @@
 import { getMessageMeta } from '../helpers'
 import type { ChatMessage } from './types'
 import { toHHmm } from './utils/time'
+import DOMPurify from 'dompurify'
+import { Marked } from 'marked'
+
+const markdown = new Marked({
+  breaks: true,
+  gfm: true,
+})
+
+function normalizeDefinitionLists(source: string) {
+  // Support the Pandoc-style syntax commonly emitted by LLMs:
+  // Term
+  // : Definition
+  return source.replace(
+    /^([^\n]+)\n: ([^\n]+)(?=\n|$)/gm,
+    '<dl><dt>$1</dt><dd>$2</dd></dl>',
+  )
+}
+
+function openExternalLinksInNewTab(html: string) {
+  return html.replace(/<a\b([^>]*)>/gi, (tag, attributes: string) => {
+    const href = attributes.match(/\bhref=(["'])(.*?)\1/i)?.[2]
+    if (!href || href.startsWith('#')) return tag
+
+    const cleanAttributes = attributes
+      .replace(/\s+target=(["']).*?\1/gi, '')
+      .replace(/\s+rel=(["']).*?\1/gi, '')
+
+    return `<a${cleanAttributes} target="_blank" rel="noopener noreferrer">`
+  })
+}
 
 export default function ChatBody(props: { messages: Array<ChatMessage> }) {
   const messagesMeta = getMessageMeta(props.messages)
-
+ 
   return (
     <>
       {messagesMeta.map((message, idx) => {
         const prev = idx > 0 ? messagesMeta[idx - 1] : undefined
         const next = idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined
-
+        const normalized = normalizeDefinitionLists(message.content)
+        const rendered = markdown.parse(normalized, { async: false })
+        const renderedHtml = typeof rendered === 'string' ? rendered : ''
+        const sanitizedHtml = DOMPurify.sanitize(
+          renderedHtml
+            .replaceAll('<table>', '<div class="chat-table-wrap"><table>')
+            .replaceAll('</table>', '</table></div>'),
+        )
+        const html = openExternalLinksInNewTab(sanitizedHtml)
         const isContinued = !!prev && prev.side === message.side
         const showAvatar = message.side === 'staff' && message.isLastOfGroup
 
@@ -21,12 +59,14 @@ export default function ChatBody(props: { messages: Array<ChatMessage> }) {
         const bubbleClassName = [
           'chat-bubble-shape',
           // typography + wrapping
-          'text-[13px] leading-[1.35] tracking-[-0.01em] whitespace-pre-wrap',
+          'text-[13px] leading-[1.4] tracking-[-0.01em]',
           'overflow-wrap:anywhere break-words',
           // size + padding
-          'w-fit max-w-[75%] px-[0.85em] py-[0.28em]',
+          'w-fit px-[0.85em] py-[0.5em]',
           // role alignment + colors
-          message.side === 'user' ? 'ml-auto bg-sky-600/80 text-white' : 'mr-auto bg-gray-300/80 text-black',
+          message.side === 'user'
+            ? 'ml-auto max-w-[75%] bg-sky-600/80 text-white'
+            : 'mr-auto max-w-[92%] bg-gray-300/80 text-black',
           // tail
           message.isLastOfGroup ? (message.side === 'user' ? 'chat-tail-user' : 'chat-tail-staff') : '',
         ]
@@ -35,12 +75,15 @@ export default function ChatBody(props: { messages: Array<ChatMessage> }) {
 
         return (
           <div
-            key={message.timestamp}
+            key={`${message.timestamp}-${idx}`}
             className={[
               'flex flex-col',
               isContinued ? 'mt-0.5' : 'mt-1.5',
             ].join(' ')}>
-            <div className={bubbleClassName}>{message.content}</div>
+            <div
+              className={`${bubbleClassName} chat-markdown`}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
 
             {(showAvatar || showTimestamp) && (
               <div

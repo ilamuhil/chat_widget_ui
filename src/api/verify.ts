@@ -1,5 +1,3 @@
-import axios from 'axios'
-
 export type BotConfig = {
   tone: string
   role: string
@@ -31,20 +29,34 @@ export async function verifyChat({
   if (!API_URL_BASE) {
     throw new Error('Missing VITE_API_URL_BASE')
   }
-  try {
-    const response = await axios.post<VerificationResponse>(`${API_URL_BASE}/api/auth/user/token`, {
+  const response = await fetch(`${API_URL_BASE}/api/auth/user/token`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
       api_key,
       bot_id,
-    })
-    console.log('Authentication Successful')
-    console.log(response.data)
-    return response.data
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Authentication Failed', error.response?.data)
-    } else {
-      console.error('Authentication Failed', error)
+    }),
+  })
+
+  if (!response.ok) {
+    const responseText = await response.text()
+    let details: unknown = responseText
+    try {
+      details = JSON.parse(responseText)
+    } catch {
+      // Keep the plain response body when it is not JSON.
     }
-    throw error
+
+    console.error('Authentication Failed', details)
+    throw new Error(`Authentication failed (${response.status})`)
   }
+
+  const data = (await response.json()) as VerificationResponse
+  if (typeof data.token !== 'string' || typeof data.conversation_id !== 'string') {
+    throw new Error('Authentication response is missing token or conversation_id')
+  }
+
+  return data
 }

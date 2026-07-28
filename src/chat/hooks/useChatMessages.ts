@@ -9,6 +9,33 @@ type Sender = {
   sendJsonMessage: (data: Record<string, unknown>) => void
 }
 
+function extractText(value: unknown): string {
+  if (typeof value === 'string') return value
+
+  if (Array.isArray(value)) {
+    return value
+      .map(block => {
+        if (typeof block === 'string') return block
+        if (!block || typeof block !== 'object') return ''
+
+        const record = block as Record<string, unknown>
+        if (typeof record.text === 'string') return record.text
+        if (typeof record.content === 'string') return record.content
+        return ''
+      })
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    if (typeof record.text === 'string') return record.text
+    if (typeof record.content === 'string') return record.content
+  }
+
+  return ''
+}
+
 export function useChatMessages() {
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [isTyping, setIsTyping] = useState(false)
@@ -34,9 +61,13 @@ export function useChatMessages() {
       setMessages(prev => [...prev, outgoing])
 
       const sender = senderRef.current
-      if (sender && sender.readyState === "open") {
-        // Server reads either `message` or `content`.
-        sender.sendJsonMessage({ content, contentType: 'text' })
+      if (sender) {
+        sender.sendJsonMessage({
+          type: 'message',
+          message: content,
+          content,
+          contentType: 'text',
+        })
       }
     },
     [],
@@ -87,7 +118,7 @@ export function useChatMessages() {
 
     // Regular messages
     const ev = obj as unknown as ServerMessageEvent
-    const content = (typeof ev.content === 'string' && ev.content) || (typeof ev.message === 'string' && ev.message) || ''
+    const content = extractText(ev.content) || extractText(ev.message)
     if (!content) return
 
     const role: Role =

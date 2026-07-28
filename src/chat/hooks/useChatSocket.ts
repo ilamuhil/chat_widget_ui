@@ -20,6 +20,7 @@ export function useChatSocket(params: UseChatSocketParams) {
   const { isOpen, token, conversationId, onServerMessage, onClose } = params
 
   const socketRef = useRef<WebSocket | null>(null)
+  const pendingMessagesRef = useRef<Array<Record<string, unknown>>>([])
   const onServerMessageRef = useRef(onServerMessage)
   const onCloseRef = useRef(onClose)
   const tokenRef = useRef(token)
@@ -56,7 +57,10 @@ export function useChatSocket(params: UseChatSocketParams) {
 
   const sendJsonMessage = useCallback((payload: Record<string, unknown>) => {
     const socket = socketRef.current
-    if (!socket || socket.readyState !== WebSocket.OPEN) return
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      pendingMessagesRef.current.push(payload)
+      return
+    }
     socket.send(JSON.stringify(payload))
   }, [])
 
@@ -84,6 +88,13 @@ export function useChatSocket(params: UseChatSocketParams) {
           conversation_id: activeConversationId,
         }),
       )
+
+      // Authentication must be the first frame. Flush user messages only
+      // after it has been sent.
+      for (const payload of pendingMessagesRef.current) {
+        socket.send(JSON.stringify(payload))
+      }
+      pendingMessagesRef.current = []
     }
 
     socket.onmessage = (evt: MessageEvent) => {
@@ -122,7 +133,7 @@ export function useChatSocket(params: UseChatSocketParams) {
         socket.close()
       }
     }
-  }, [socketUrl])
+  }, [socketUrl, token, conversationId])
 
   const disconnect = useCallback(() => {
     const socket = socketRef.current

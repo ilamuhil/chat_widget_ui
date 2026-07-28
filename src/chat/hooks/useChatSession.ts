@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { verifyChat, type BotConfig } from '../../api/verify'
-import { isJwtExpired } from '../utils/jwt'
+import { getJwtExpirationTime, isJwtExpired } from '../utils/jwt'
 
 type ChatSessionState = {
   token: string | null
@@ -94,6 +94,28 @@ export function useChatSession(params: UseChatSessionParams) {
     authenticationRef.current = authentication
     return authentication
   }, [api_key, bot_id])
+
+  useEffect(() => {
+    if (!state.token) return
+
+    const expiresAt = getJwtExpirationTime(state.token)
+    if (expiresAt === null) {
+      void ensureSession().catch(() => {
+        // authFailed is updated inside ensureSession.
+      })
+      return
+    }
+
+    // Refresh shortly before expiry so the socket does not use a stale token.
+    const refreshInMs = Math.max(0, expiresAt - Date.now() - 5_000)
+    const timeoutId = window.setTimeout(() => {
+      void ensureSession().catch(() => {
+        // authFailed is updated inside ensureSession.
+      })
+    }, refreshInMs)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [state.token, ensureSession])
 
   return {
     token: state.token,
