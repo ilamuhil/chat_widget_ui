@@ -32,9 +32,19 @@ function openExternalLinksInNewTab(html: string) {
   })
 }
 
-export default function ChatBody(props: { messages: Array<ChatMessage> }) {
-  const messagesMeta = getMessageMeta(props.messages)
- 
+export default function ChatBody(props: {
+  messages: Array<ChatMessage>
+  onFormSubmit: () => void
+  email: string
+  phone: string
+  setEmail: (email: string) => void
+  setPhone: (phone: string) => void
+  showFormCapture: boolean
+}) {
+  const { messages, onFormSubmit, email, phone, setEmail, setPhone, showFormCapture, name, setName } = props
+  const messagesMeta = getMessageMeta(messages)
+  const disableFormSubmit = !email.trim() || !phone.trim()
+
   return (
     <>
       {messagesMeta.map((message, idx) => {
@@ -98,13 +108,74 @@ export default function ChatBody(props: { messages: Array<ChatMessage> }) {
                   </div>
                 )}
                 {showTimestamp && (
-                  <div className='select-none text-[11px] italic leading-none text-slate-900/45'>{timeText}</div>
+                  <div className='select-none text-[9px] italic leading-none text-slate-900/45'>{timeText}</div>
                 )}
               </div>
             )}
           </div>
         )
       })}
+
+      {showFormCapture && (
+        <form
+          className='mt-2 flex w-full max-w-60 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm'
+          onSubmit={event => {
+            event.preventDefault()
+            onFormSubmit()
+          }}>
+          <label className='sr-only' htmlFor='capture-name'>
+            Name
+          </label>
+          <input
+            id='capture-email'
+            className='h-8 w-full rounded border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
+            type='text'
+            name='name'
+            value={name}
+            onChange={event => setName(event.target.value)}
+            autoComplete='name'
+            placeholder='Name'
+            required
+          />
+          <label className='sr-only' htmlFor='capture-email'>
+            Email address
+          </label>
+          <input
+            id='capture-email'
+            className='h-8 w-full rounded border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
+            type='email'
+            name='email'
+            value={email}
+            onChange={event => setEmail(event.target.value)}
+            autoComplete='email'
+            placeholder='Email address'
+            required
+          />
+
+          <label className='sr-only' htmlFor='capture-phone'>
+            Phone number
+          </label>
+          <input
+            id='capture-phone'
+            className='h-8 w-full rounded border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
+            type='tel'
+            name='phone'
+            value={phone}
+            onChange={event => setPhone(event.target.value)}
+            autoComplete='tel'
+            inputMode='tel'
+            placeholder='Phone number'
+            required
+          />
+
+          <button
+            className='h-8 self-end rounded bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
+            disabled={disableFormSubmit}
+            type='submit'>
+            Submit
+          </button>
+        </form>
+      )}
     </>
   )
 }

@@ -16,6 +16,8 @@ const CLOSE_ANIMATION_MS = 320
 const SUPPORT_TITLE = 'Support'
 const SUPPORT_META = 'Typically replies in ~5 min'
 const SUPPORT_EMAIL_HREF = 'mailto:support@example.com'
+const FORM_CAPTURED_KEY = 'form_data'
+const FORM_CAPTURED_VALUE = 'captured'
 
 type WidgetProps = {
   api_key: string
@@ -37,15 +39,34 @@ export default function ChatWidget(props: WidgetProps) {
     bot_id: props.bot_id,
   })
 
-  const { messages, isTyping, appendUserMessage, clearMessages, handleServerJson, handleSocketClose, setSender } =
-    useChatMessages()
+  const [showFormCapture, setShowFormCapture] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      localStorage.getItem(FORM_CAPTURED_KEY) !== FORM_CAPTURED_VALUE,
+  )
+
+  console.log('showFormCapture', showFormCapture)
+  console.log('localStorage.getItem(FORM_CAPTURED_KEY)', localStorage.getItem(FORM_CAPTURED_KEY))
+
+
+  const toggleFormVisibility = useCallback((show: boolean = false) => {
+    setShowFormCapture(show)
+    if (show) {
+      localStorage.setItem(FORM_CAPTURED_KEY, FORM_CAPTURED_VALUE)
+    } else {
+      localStorage.removeItem(FORM_CAPTURED_KEY)
+    }
+  }, [])
+
+  const { messages, isTyping, appendUserMessage, clearMessages, handleServerJson, clearTyping, setSender } =
+    useChatMessages({ toggleFormVisibility })
 
   const { sendJsonMessage, readyState } = useChatSocket({
     isOpen,
     token,
     conversationId,
     onServerMessage: handleServerJson,
-    onClose: handleSocketClose,
+    onClose: clearTyping,
   })
 
   useEffect(() => {
@@ -67,6 +88,7 @@ export default function ChatWidget(props: WidgetProps) {
   const closeChat = () => {
     if (layoutFullscreen) setClosingFullscreen(true)
     setIsOpen(false)
+    clearTyping()
   }
 
   const handleSend = (content: string) => appendUserMessage(content)
@@ -80,6 +102,20 @@ export default function ChatWidget(props: WidgetProps) {
 
     return () => window.clearTimeout(t)
   }, [isOpen, closingFullscreen])
+
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
+
+  const handleFormSubmit = () => {
+    
+    const [normalizedEmail, normalizedPhone, normalizedName] = [email.trim(), phone.trim(), name.trim()]
+    if (!normalizedEmail || !normalizedPhone || !normalizedName) return
+    appendUserMessage({ email: normalizedEmail, phone: normalizedPhone, name: normalizedName }, true)
+  }
+
+
+
 
   return (
     <div
@@ -131,23 +167,23 @@ export default function ChatWidget(props: WidgetProps) {
         style={
           layoutFullscreen
             ? {
-                top: 'var(--chat-fullscreen-top)',
-                right: 'var(--chat-fullscreen-right)',
-                bottom: 'var(--chat-fullscreen-bottom)',
-                left: 'var(--chat-fullscreen-left)',
-                borderRadius: 'var(--chat-fullscreen-radius)',
-                boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
-              }
+              top: 'var(--chat-fullscreen-top)',
+              right: 'var(--chat-fullscreen-right)',
+              bottom: 'var(--chat-fullscreen-bottom)',
+              left: 'var(--chat-fullscreen-left)',
+              borderRadius: 'var(--chat-fullscreen-radius)',
+              boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
+            }
             : {
-                bottom: 'calc(var(--chat-bubble-size) + var(--chat-gap))',
-                width: 'min(var(--chat-panel-width), calc(100vw - 2rem))',
-                height:
-                  'min(var(--chat-panel-height), calc(100vh - var(--chat-panel-viewport-margin)))',
-                boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)',
-              }
+              bottom: 'calc(var(--chat-bubble-size) + var(--chat-gap))',
+              width: 'min(var(--chat-panel-width), calc(100vw - 2rem))',
+              height:
+                'min(var(--chat-panel-height), calc(100vh - var(--chat-panel-viewport-margin)))',
+              boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)',
+            }
         }
         role='dialog'
-        >
+      >
         <div className='flex items-center justify-between gap-3 border-b border-slate-900/10 px-3.5 py-3'>
           <div className='min-w-0 flex flex-col gap-1'>
             <div className='min-w-0 flex items-center gap-2'>
@@ -171,13 +207,7 @@ export default function ChatWidget(props: WidgetProps) {
           </div>
 
           <div className='inline-flex flex-none items-center gap-1.5'>
-            <button
-              className='pointer-events-auto rounded-full bg-slate-900/5 px-2.5 py-1 text-[11px] font-medium leading-none text-slate-900/70 hover:bg-slate-900/10'
-              type='button'
-              aria-label='End chat'
-              onClick={endChat}>
-              End
-            </button>
+
 
             <a
               className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10 active:translate-y-px'
@@ -207,10 +237,27 @@ export default function ChatWidget(props: WidgetProps) {
             </button>
           </div>
         </div>
+        <button
+          className='pointer-events-auto rounded-b-sm bg-slate-900/5 px-2.5 py-2 text-[10px] font-medium leading-none text-slate-900/70 hover:bg-slate-900/10 w-full hover:cursor-pointer'
+          type='button'
+          aria-label='End chat'
+          onClick={endChat}>
+          End Chat
+        </button>
 
         <div className='flex flex-1 min-h-0 flex-col'>
           <div className='flex-1 min-h-0 overflow-auto overflow-x-hidden p-1'>
-            <ChatBody messages={messages} />
+            <ChatBody
+              messages={messages}
+              showFormCapture={showFormCapture}
+              onFormSubmit={handleFormSubmit}
+              email={email}
+              phone={phone}
+              name={name}
+              setEmail={setEmail}
+              setPhone={setPhone}
+              setName={setName}
+            />
           </div>
           {isTyping && <TypingIndicator />}
           <ConnectionStatus
@@ -222,6 +269,7 @@ export default function ChatWidget(props: WidgetProps) {
 
         <ChatComposer
           onSend={handleSend}
+          showFormCapture={showFormCapture}
         />
       </div>
     </div>

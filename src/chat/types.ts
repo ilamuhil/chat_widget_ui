@@ -17,6 +17,13 @@ export type ServerTypingEvent = {
   conversation_id?: string
 }
 
+export type ServerFormCapturedEvent = {
+  type: 'form_capture'
+  role: 'assistant'
+  message: string
+  conversation_id: string
+}
+
 export type ServerMessageEvent = {
   type?: 'message' | string
   role?: Role | string
@@ -31,4 +38,3 @@ export type ServerErrorEvent = {
   message: string
   conversation_id?: string
 }
-

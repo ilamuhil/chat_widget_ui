@@ -17,6 +17,7 @@ type UseChatSessionParams = {
 
 const STORAGE_TOKEN_KEY = 'token'
 const STORAGE_CONVERSATION_ID_KEY = 'conversation_id'
+const BOT_CONFIG_KEY = 'bot_config'
 
 export function useChatSession(params: UseChatSessionParams) {
   const { api_key, bot_id } = params
@@ -33,6 +34,7 @@ export function useChatSession(params: UseChatSessionParams) {
       authFailed: false,
     }
   })
+  
 
   const clearSession = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -71,6 +73,7 @@ export function useChatSession(params: UseChatSessionParams) {
         const data = await verifyChat({ api_key, bot_id })
         sessionStorage.setItem(STORAGE_CONVERSATION_ID_KEY, data.conversation_id)
         sessionStorage.setItem(STORAGE_TOKEN_KEY, data.token)
+        sessionStorage.setItem(BOT_CONFIG_KEY, JSON.stringify(data.bot_config))
 
         setState(prev => ({
           ...prev,

@@ -27,7 +27,7 @@ export async function verifyChat({
 }: VerificationRequest): Promise<VerificationResponse> {
   const API_URL_BASE = import.meta.env.VITE_API_URL_BASE as string | undefined
   if (!API_URL_BASE) {
-    throw new Error('Missing VITE_API_URL_BASE')
+    throw new Error('Missing API_URL_BASE')
   }
   const response = await fetch(`${API_URL_BASE}/api/auth/user/token`, {
     method: 'POST',

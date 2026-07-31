@@ -39,3 +39,17 @@
     scrollbar-width: none; /* Firefox */
   }
 }
+
+/* Keep the connected status visible briefly, then fade it out. */
+@keyframes fadeout {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.connection-status-fade-out {
+  animation: fadeout 300ms ease-out 700ms forwards;
+}

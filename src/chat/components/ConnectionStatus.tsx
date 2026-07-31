@@ -1,13 +1,29 @@
 
 
 import type { SocketReadyState } from '../hooks/useChatSocket'
+import { useState, useEffect } from 'react'
 
 export function ConnectionStatus(props: {
   readyState: SocketReadyState
   isAuthenticating: boolean
   authFailed: boolean
 }) {
+
+  const [showConnectionStatus, setShowConnectionStatus] = useState(true)
   const { readyState, isAuthenticating, authFailed } = props
+  useEffect(() => {
+    let timeout: number | undefined
+    if (readyState === 'open') { 
+      timeout = window.setTimeout(()=>{
+        setShowConnectionStatus(false)
+      }, 1000)
+    }
+
+    return () => {
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
+  }, [readyState])
+
 
   const view = authFailed
     ? { label: 'Connection failed', colorClass: 'text-rose-600', dotClass: 'bg-rose-500/70' }
@@ -18,7 +34,7 @@ export function ConnectionStatus(props: {
         : { label: 'Disconnected', colorClass: 'text-slate-500', dotClass: 'bg-slate-400/60' }
 
   return (
-    <div className={`flex items-center justify-center gap-1.5 rounded-t-lg bg-slate-900/5 p-1.5 text-xs ${view.colorClass} rise`}>
+    <div className={`${showConnectionStatus ? 'block' : 'hidden'} flex items-center justify-center gap-1.5 rounded-t-lg bg-slate-900/5 p-1.5 text-xs ${view.colorClass} rise`}>
       <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${view.dotClass}`} aria-hidden='true' />
       <span className='text-xs'>{view.label}</span>
     </div>
