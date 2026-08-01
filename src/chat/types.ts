@@ -10,6 +10,10 @@ export type ChatMessage = {
   agentName?: string
 }
 
+export type FileMessage = {
+  file_key: string
+}
+
 export type ServerTypingEvent = {
   type: 'typing'
   from?: 'assistant' | 'agent' | 'user' | string

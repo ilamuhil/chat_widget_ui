@@ -37,13 +37,15 @@ export default function ChatBody(props: {
   onFormSubmit: () => void
   email: string
   phone: string
+  name: string
   setEmail: (email: string) => void
   setPhone: (phone: string) => void
+  setName: (name: string) => void
   showFormCapture: boolean
 }) {
   const { messages, onFormSubmit, email, phone, setEmail, setPhone, showFormCapture, name, setName } = props
   const messagesMeta = getMessageMeta(messages)
-  const disableFormSubmit = !email.trim() || !phone.trim()
+  const disableFormSubmit = !email.trim() || !phone.trim() || !name.trim()
 
   return (
     <>

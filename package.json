@@ -4,13 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"tsc -b --watch\" \"vite\"",
+    "tsc": "tsc -b --watch",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "dompurify": "^3.4.12",
+    "lucide-react": "^1.28.0",
     "marked": "^18.0.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
@@ -23,6 +25,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
     "babel-plugin-react-compiler": "^1.0.0",
+    "concurrently": "^10.0.4",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",

@@ -6,6 +6,7 @@ import type {
   ServerMessageEvent,
   ServerTypingEvent,
   ServerFormCapturedEvent,
+  FileMessage,
 } from '../types'
 import { formatTimestamp } from '../utils/time'
 
@@ -48,7 +49,9 @@ function extractText(value: unknown): string {
   return ''
 }
 
-export function useChatMessages(props: { toggleFormVisibility: () => void }) {
+export function useChatMessages(props: {
+  toggleFormVisibility: (show?: boolean) => void
+}) {
   const { toggleFormVisibility } = props
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [isTyping, setIsTyping] = useState(false)
@@ -64,15 +67,38 @@ export function useChatMessages(props: { toggleFormVisibility: () => void }) {
   }, [])
 
   const appendUserMessage = useCallback(
-    (content: string | FormCaptureData, isFormCaptureData: boolean = false) => {
+    (
+      content: string | FormCaptureData | FileMessage,
+      isFormCaptureData: boolean = false,
+    ) => {
       //Send the message to the server.
       const sender = senderRef.current
+      let type: 'message' | 'file' | 'form_capture' = 'message'
       if (sender) {
+        //3 types of message are sent to the server : file message indicating that a file has been uploaded to the server.
+        //form capture message indicating that the user has filled the form details.
+        //ordinary text messages indicating that the user has sent a message to the assistant.
+        if (content instanceof String) {
+          type = 'message'
+        } else if (typeof content === 'object' && 'file_key' in content) {
+          type = 'file'
+          content = (content as FileMessage).file_key
+        } else if (
+          typeof content === 'object' &&
+          'name' in content &&
+          'email' in content &&
+          'phone' in content
+        ) {
+          type = 'form_capture'
+        }
         sender.sendJsonMessage({
-          type: isFormCaptureData ? 'form_capture' : 'message',
-          content: isFormCaptureData
-            ? `${(content as FormCaptureData).name}:${(content as FormCaptureData).email}:${(content as FormCaptureData).phone}`
-            : (content as string),
+          type,
+          content:
+            type === 'form_capture'
+              ? `${(content as FormCaptureData).name}:${(content as FormCaptureData).email}:${(content as FormCaptureData).phone}`
+              : type === 'file'
+                ? (content as FileMessage).file_key
+                : (content as string),
         })
         toggleFormVisibility()
         setIsTyping(true)

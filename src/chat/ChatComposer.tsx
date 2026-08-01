@@ -1,20 +1,111 @@
 import { useEffect, useRef, useState } from 'react'
 import { IconPaperclip, IconSend } from '../assets/icons'
+import type { BannerMessage } from './components/InfoBanner'
+import { Spinner } from './components/Spinner'
 
 //When the form is shown the text area and the send button will be disabled...
+
+const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+
+  const API_URL_BASE = import.meta.env.VITE_API_URL_BASE as string | undefined
+  if (!API_URL_BASE) throw new Error('File upload is unavailable')
+
+  //limit file size to 5mb
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('File size must be less than 5MB')
+  }
+  console.log('file size is less than 5mb')
+
+  // only pdf, docx, img, txt files are allowed
+  const allowedExtensions = ['pdf', 'docx', 'img', 'txt']
+  const extension = file.name.split('.').pop()
+  if (!extension || !allowedExtensions.includes(extension)) {
+    throw new Error('Allowed file types are pdf, docx, img, txt')
+  }
+  console.log('file type is allowed')
+
+
+  const formData = new FormData()
+  formData.append('file', file)
+  const token = sessionStorage.getItem('token')
+  if (!token) throw new Error('Unauthorized')
+  const response = await fetch(`${API_URL_BASE}/api/conversations/upload`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    let responseBody: { message?: unknown; detail?: unknown } | null = null;
+    try {
+      responseBody = await response.json();
+    } catch (jsonErr) {
+      console.error('Failed to parse error response JSON:', jsonErr);
+      throw new Error('Unknown Error Occurred')
+    }
+    const serverMessage =
+      typeof responseBody?.message === 'string'
+        ? responseBody.message
+        : typeof responseBody?.detail === 'string'
+          ? responseBody.detail
+          : null;
+
+    console.error(
+      'File upload failed:',
+      {
+        status: response.status,
+        statusText: response.statusText,
+        responseBody,
+      }
+    );
+
+    throw new Error(serverMessage ?? `Failed to upload file (${response.status})`);
+  }
+  return `${file.name}`
+}
+
 export default function ChatComposer(props: {
   onSend: (message: string) => void
   showFormCapture: boolean
+  onBannerMessage: (message: BannerMessage) => void
 }) {
-
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const [fileUploading, setFileUploading] = useState(false)
 
   const handleSend = () => {
     const text = value.trim()
     if (!text) return
     props.onSend(text)
     setValue('')
+  }
+
+  const onFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setFileUploading(true)
+      const fileKey = await handleFileUpload(event)
+      props.onSend({
+        type: 'file',
+        file_key: fileKey,
+      })
+      props.onBannerMessage({
+        content: 'File uploaded successfully',
+        variant: 'info',
+      })
+    } catch (error) {
+      props.onBannerMessage({
+        content: error instanceof Error ? error.message : 'Failed to upload file',
+        variant: 'error',
+      })
+    } finally {
+      event.target.value = ''
+      setFileUploading(false)
+    }
   }
 
   useEffect(() => {
@@ -28,9 +119,14 @@ export default function ChatComposer(props: {
     <div className='flex flex-col gap-1.5 border-t border-slate-900/10 bg-white/90 p-2.5 backdrop-blur'>
       <div className='flex items-end gap-2'>
         <label className='pointer-events-auto inline-grid h-9 w-9 cursor-pointer place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10'>
-          <input className='sr-only' type='file' multiple disabled={props.showFormCapture} />
+          <input
+            className='sr-only'
+            type='file'
+            disabled={props.showFormCapture}
+            onChange={onFileChange}
+          />
           <span aria-label='Add attachment'>
-            <IconPaperclip />
+            {fileUploading ? <Spinner /> : <IconPaperclip />}
           </span>
         </label>
 

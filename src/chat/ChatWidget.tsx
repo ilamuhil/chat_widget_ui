@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import ChatImage from '../assets/chat.png'
 import { IconClose, IconEmail, IconFullscreen } from '../assets/icons'
 import useIsMobile from '../hooks/useIsMobile'
@@ -10,6 +10,8 @@ import { useChatSession } from './hooks/useChatSession'
 import { useChatSocket } from './hooks/useChatSocket'
 import { useChatMessages } from './hooks/useChatMessages'
 import { ConnectionStatus } from './components/ConnectionStatus'
+import { type FileMessage, type FormCaptureData } from './types'
+import { InfoBanner, type BannerMessage } from './components/InfoBanner'
 
 const MOBILE_MAX_WIDTH_PX = 768
 const CLOSE_ANIMATION_MS = 320
@@ -28,6 +30,10 @@ export default function ChatWidget(props: WidgetProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [closingFullscreen, setClosingFullscreen] = useState(false)
+  const [bannerMessage, setBannerMessage] = useState<BannerMessage>({
+    content: null,
+    variant: 'info',
+  })
   const isOnline = true
 
   const isMobile = useIsMobile(MOBILE_MAX_WIDTH_PX)
@@ -45,8 +51,6 @@ export default function ChatWidget(props: WidgetProps) {
       localStorage.getItem(FORM_CAPTURED_KEY) !== FORM_CAPTURED_VALUE,
   )
 
-  console.log('showFormCapture', showFormCapture)
-  console.log('localStorage.getItem(FORM_CAPTURED_KEY)', localStorage.getItem(FORM_CAPTURED_KEY))
 
 
   const toggleFormVisibility = useCallback((show: boolean = false) => {
@@ -91,7 +95,7 @@ export default function ChatWidget(props: WidgetProps) {
     clearTyping()
   }
 
-  const handleSend = (content: string) => appendUserMessage(content)
+  const handleSend = (content: string | FileMessage | FormCaptureData) => appendUserMessage(content)
 
   useEffect(() => {
     if (isOpen || !closingFullscreen) return
@@ -107,8 +111,9 @@ export default function ChatWidget(props: WidgetProps) {
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
 
+
   const handleFormSubmit = () => {
-    
+
     const [normalizedEmail, normalizedPhone, normalizedName] = [email.trim(), phone.trim(), name.trim()]
     if (!normalizedEmail || !normalizedPhone || !normalizedName) return
     appendUserMessage({ email: normalizedEmail, phone: normalizedPhone, name: normalizedName }, true)
@@ -237,6 +242,10 @@ export default function ChatWidget(props: WidgetProps) {
             </button>
           </div>
         </div>
+        <InfoBanner
+          message={bannerMessage}
+          onClose={() => setBannerMessage(prev => ({ ...prev, content: null }))}
+        />
         <button
           className='pointer-events-auto rounded-b-sm bg-slate-900/5 px-2.5 py-2 text-[10px] font-medium leading-none text-slate-900/70 hover:bg-slate-900/10 w-full hover:cursor-pointer'
           type='button'
@@ -270,6 +279,7 @@ export default function ChatWidget(props: WidgetProps) {
         <ChatComposer
           onSend={handleSend}
           showFormCapture={showFormCapture}
+          onBannerMessage={setBannerMessage}
         />
       </div>
     </div>
