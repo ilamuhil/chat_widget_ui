@@ -69,7 +69,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 }
 
 export default function ChatComposer(props: {
-  onSend: (message: string) => void
+  onSend: (message: string | { type: 'file', file_key: string }) => void
   showFormCapture: boolean
   onBannerMessage: (message: BannerMessage) => void
 }) {
@@ -89,6 +89,13 @@ export default function ChatComposer(props: {
     try {
       setFileUploading(true)
       const fileKey = await handleFileUpload(event)
+      if (!fileKey) {
+        props.onBannerMessage({
+          content: 'No file was selected',
+          variant: 'warning'
+        })
+        return
+      }
       props.onSend({
         type: 'file',
         file_key: fileKey,

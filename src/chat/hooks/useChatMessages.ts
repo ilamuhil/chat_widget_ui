@@ -6,7 +6,7 @@ import type {
   ServerMessageEvent,
   ServerTypingEvent,
   ServerFormCapturedEvent,
-  FileMessage,
+  FileMessage,FormCaptureData
 } from '../types'
 import { formatTimestamp } from '../utils/time'
 
@@ -17,11 +17,7 @@ type Sender = {
   sendJsonMessage: (data: Record<string, unknown>) => void
 }
 
-type FormCaptureData = {
-  email: string
-  phone: string
-  name: string
-}
+
 
 function extractText(value: unknown): string {
   if (typeof value === 'string') return value

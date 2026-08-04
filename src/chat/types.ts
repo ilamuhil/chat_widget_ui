@@ -10,6 +10,12 @@ export type ChatMessage = {
   agentName?: string
 }
 
+export type FormCaptureData = {
+  email: string
+  phone: string
+  name: string
+}
+
 export type FileMessage = {
   file_key: string
 }
