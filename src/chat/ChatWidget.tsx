@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ChatImage from '../assets/chat.png'
 import { IconClose, IconEmail, IconFullscreen } from '../assets/icons'
 import useIsMobile from '../hooks/useIsMobile'
@@ -110,16 +110,19 @@ export default function ChatWidget(props: WidgetProps) {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    const el = messagesEndRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [messages, isTyping])
 
   const handleFormSubmit = () => {
-
     const [normalizedEmail, normalizedPhone, normalizedName] = [email.trim(), phone.trim(), name.trim()]
     if (!normalizedEmail || !normalizedPhone || !normalizedName) return
     appendUserMessage({ email: normalizedEmail, phone: normalizedPhone, name: normalizedName }, true)
   }
-
-
 
 
   return (
@@ -212,8 +215,6 @@ export default function ChatWidget(props: WidgetProps) {
           </div>
 
           <div className='inline-flex flex-none items-center gap-1.5'>
-
-
             <a
               className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10 active:translate-y-px'
               href={SUPPORT_EMAIL_HREF}
@@ -255,7 +256,7 @@ export default function ChatWidget(props: WidgetProps) {
         </button>
 
         <div className='flex flex-1 min-h-0 flex-col'>
-          <div className='flex-1 min-h-0 overflow-auto overflow-x-hidden p-1'>
+          <div className='flex-1 min-h-0 overflow-auto overflow-x-hidden p-1 no-scrollbar' ref={messagesEndRef}>
             <ChatBody
               messages={messages}
               showFormCapture={showFormCapture}

@@ -6,18 +6,17 @@ import type {
   ServerMessageEvent,
   ServerTypingEvent,
   ServerFormCapturedEvent,
-  FileMessage,FormCaptureData
+  FileMessage,
+  FormCaptureData,
 } from '../types'
 import { formatTimestamp } from '../utils/time'
-
+import bopUrl from '../../assets/audio/bop.mp3'
 import type { SocketReadyState } from './useChatSocket'
 
 type Sender = {
   readyState: SocketReadyState
   sendJsonMessage: (data: Record<string, unknown>) => void
 }
-
-
 
 function extractText(value: unknown): string {
   if (typeof value === 'string') return value
@@ -43,6 +42,13 @@ function extractText(value: unknown): string {
   }
 
   return ''
+}
+
+const audio = new Audio(bopUrl)
+
+const playBopSound = () => {
+  audio.currentTime = 0
+  audio.play().catch(() => {})
 }
 
 export function useChatMessages(props: {
@@ -97,6 +103,7 @@ export function useChatMessages(props: {
                 : (content as string),
         })
         toggleFormVisibility()
+        playBopSound()
         setIsTyping(true)
       }
 
