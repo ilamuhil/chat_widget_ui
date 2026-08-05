@@ -7,34 +7,60 @@ type UseChatSocketParams = {
   token: string | null
   conversationId: string | null
   onServerMessage?: (data: unknown) => void
-  onClose?: () => void
+  onCloseCleanUp?: () => void
 }
 
 function toWebSocketUrl(httpOrWsUrl: string) {
-  if (httpOrWsUrl.startsWith('https://')) return `wss://${httpOrWsUrl.slice('https://'.length)}`
-  if (httpOrWsUrl.startsWith('http://')) return `ws://${httpOrWsUrl.slice('http://'.length)}`
+  if (httpOrWsUrl.startsWith('https://'))
+    return `wss://${httpOrWsUrl.slice('https://'.length)}`
+  if (httpOrWsUrl.startsWith('http://'))
+    return `ws://${httpOrWsUrl.slice('http://'.length)}`
   return httpOrWsUrl
 }
 
 export function useChatSocket(params: UseChatSocketParams) {
-  const { isOpen, token, conversationId, onServerMessage, onClose } = params
+  const { isOpen, token, conversationId, onServerMessage, onCloseCleanUp } =
+    params
 
   const socketRef = useRef<WebSocket | null>(null)
   const pendingMessagesRef = useRef<Array<Record<string, unknown>>>([])
   const onServerMessageRef = useRef(onServerMessage)
-  const onCloseRef = useRef(onClose)
+  const onCloseRef = useRef(onCloseCleanUp)
   const tokenRef = useRef(token)
   const conversationIdRef = useRef(conversationId)
+  const heartbeatIntervalRef = useRef<
+    ReturnType<typeof setInterval> | undefined
+  >(undefined)
+  const watchDogTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
+  const awaitingPongRef = useRef(false)
+  const manualCloseRef = useRef(false)
 
   const [readyState, setReadyState] = useState<SocketReadyState>('closed')
+
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current)
+      heartbeatIntervalRef.current = undefined
+    }
+    if (watchDogTimerRef.current) {
+      clearTimeout(watchDogTimerRef.current)
+      watchDogTimerRef.current = undefined
+    }
+    awaitingPongRef.current = false
+  }, [])
 
   useEffect(() => {
     onServerMessageRef.current = onServerMessage
   }, [onServerMessage])
 
   useEffect(() => {
-    onCloseRef.current = onClose
-  }, [onClose])
+    onCloseRef.current = onCloseCleanUp
+  }, [onCloseCleanUp])
 
   useEffect(() => {
     tokenRef.current = token
@@ -45,7 +71,9 @@ export function useChatSocket(params: UseChatSocketParams) {
   }, [conversationId])
 
   const wsUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_CHAT_SERVER_URL as string | undefined)?.trim()
+    const base = (
+      import.meta.env.VITE_CHAT_SERVER_URL as string | undefined
+    )?.trim()
     if (!base) return ''
     return `${toWebSocketUrl(base)}/api/chat/ws`
   }, [])
@@ -65,89 +93,142 @@ export function useChatSocket(params: UseChatSocketParams) {
   }, [])
 
   useEffect(() => {
-    if (!socketUrl) return
-
     let cancelled = false
-    const socket = new WebSocket(socketUrl)
-    socketRef.current = socket
-    // This state reflects the external socket created immediately above.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReadyState('connecting')
+    let attempt = 0
 
-    socket.onopen = () => {
-      if (cancelled || socketRef.current !== socket) return
-      setReadyState('open')
+    const connect = () => {
+      if (cancelled || !socketUrl) return
+      manualCloseRef.current = false
+      const socket = new WebSocket(socketUrl)
+      socketRef.current = socket
+      queueMicrotask(() => {
+        if (!cancelled && socketRef.current === socket) {
+          setReadyState('connecting')
+        }
+      })
+      socket.onopen = () => {
+        if (cancelled || socketRef.current !== socket) return
+        clearHeartbeat()
+        attempt = 0
+        setReadyState('open')
 
-      const activeToken = tokenRef.current
-      const activeConversationId = conversationIdRef.current
-      if (!activeToken || !activeConversationId) return
+        const activeToken = tokenRef.current
+        const activeConversationId = conversationIdRef.current
+        if (!activeToken || !activeConversationId) return
 
-      socket.send(
-        JSON.stringify({
-          token: activeToken,
-          conversation_id: activeConversationId,
-        }),
-      )
+        // Auth must be the first frame before any application traffic (including ping).
+        socket.send(
+          JSON.stringify({
+            token: activeToken,
+            conversation_id: activeConversationId,
+          }),
+        )
+        for (const payload of pendingMessagesRef.current) {
+          socket.send(JSON.stringify(payload))
+        }
+        pendingMessagesRef.current = []
 
-      // Authentication must be the first frame. Flush user messages only
-      // after it has been sent.
-      for (const payload of pendingMessagesRef.current) {
-        socket.send(JSON.stringify(payload))
+        const sendPing = () => {
+          if (
+            cancelled ||
+            socketRef.current !== socket ||
+            socket.readyState !== WebSocket.OPEN
+          )
+            return
+          // Avoid stacking pings if the previous pong is still outstanding.
+          if (awaitingPongRef.current) return
+
+          socket.send(JSON.stringify({ type: 'ping' }))
+          awaitingPongRef.current = true
+          if (watchDogTimerRef.current) clearTimeout(watchDogTimerRef.current)
+          watchDogTimerRef.current = setTimeout(() => {
+            if (awaitingPongRef.current) socket.close(4000, 'Ping timeout')
+          }, 5000)
+        }
+
+        // Immediate health check, then every 20s.
+        sendPing()
+        heartbeatIntervalRef.current = setInterval(sendPing, 20000)
       }
-      pendingMessagesRef.current = []
+      socket.onmessage = (evt: MessageEvent) => {
+        if (cancelled || socketRef.current !== socket) return
+
+        const raw = evt.data
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw) as { type?: unknown }
+            // Handle heartbeat before requiring a chat message handler.
+            if (parsed?.type === 'pong') {
+              awaitingPongRef.current = false
+              if (watchDogTimerRef.current) {
+                clearTimeout(watchDogTimerRef.current)
+                watchDogTimerRef.current = undefined
+              }
+              return
+            }
+            onServerMessageRef.current?.(parsed)
+          } catch {
+            onServerMessageRef.current?.(raw)
+          }
+          return
+        }
+        onServerMessageRef.current?.(raw)
+      }
+      socket.onclose = () => {
+        //!IMPORTANT: this runs after the disconnect function defined below.
+        clearHeartbeat()
+        if (cancelled) return
+        if (socketRef.current === socket) {
+          socketRef.current = null
+        }
+        const shouldReconnect = !manualCloseRef.current
+        if (shouldReconnect && attempt < 5) {
+          const delay = Math.min(30_000, 2000 * 2 ** attempt)
+          attempt += 1
+          setReadyState('connecting')
+          retryTimerRef.current = setTimeout(connect, delay)
+          return
+        }
+        setReadyState('closed')
+        onCloseRef.current?.()
+      }
     }
-
-    socket.onmessage = (evt: MessageEvent) => {
-      if (cancelled || socketRef.current !== socket) return
-      const handler = onServerMessageRef.current
-      if (!handler) return
-
-      const raw = evt.data
-      if (typeof raw !== 'string') {
-        handler(raw)
-        return
-      }
-
-      try {
-        handler(JSON.parse(raw))
-      } catch {
-        handler(raw)
-      }
-    }
-
-    socket.onclose = () => {
-      if (cancelled) return
-      if (socketRef.current === socket) {
-        socketRef.current = null
-      }
-      setReadyState('closed')
-      onCloseRef.current?.()
-    }
+    connect()
 
     return () => {
       cancelled = true
-      if (socketRef.current === socket) {
-        socketRef.current = null
+      clearHeartbeat()
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = undefined
       }
-      if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
-        socket.close()
+      const socket = socketRef.current
+      socketRef.current = null
+      if (
+        socket &&
+        (socket.readyState === WebSocket.CONNECTING ||
+          socket.readyState === WebSocket.OPEN)
+      ) {
+        manualCloseRef.current = true
+        socket.close(1000, 'Normal Closure')
       }
     }
-  }, [socketUrl, token, conversationId])
+  }, [socketUrl, isOpen, clearHeartbeat])
 
   const disconnect = useCallback(() => {
+    clearHeartbeat()
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current)
+      retryTimerRef.current = undefined
+    }
+    manualCloseRef.current = true
     const socket = socketRef.current
     if (!socket) {
       setReadyState('closed')
       return
     }
-
-    socketRef.current = null
-    setReadyState('closing')
-    socket.close()
-    setReadyState('closed')
-    onCloseRef.current?.()
-  }, [])
+    socket.close(1000, 'Normal Closure')
+  }, [clearHeartbeat])
 
   return {
     sendJsonMessage,

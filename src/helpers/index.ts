@@ -1,4 +1,4 @@
-export type Role = 'user' | 'assistant' | 'agent'
+export type Role = 'user' | 'ai' | 'support_agent' | 'system'
 type Message = { role: Role | string; content: string; contentType: string; timestamp: string; agentName?: string }
 export type MessageSide = 'user' | 'staff'
 type MessageMeta = Message & { side: MessageSide; isLastOfGroup: boolean; initials: string }
@@ -23,8 +23,8 @@ export function getInitials(name?: string | null, role?: Role | string): string 
   }
 
   if (role === 'user') return 'U'
-  if (role === 'assistant') return 'AI'
-  return 'S'
+  if (role === 'support_agent') return 'S'
+  return 'AI'
 }
 
 

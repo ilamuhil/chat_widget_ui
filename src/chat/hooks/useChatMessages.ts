@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from 'react'
 import type {
   ChatMessage,
   Role,
-  ServerErrorEvent,
   ServerMessageEvent,
   ServerTypingEvent,
   ServerFormCapturedEvent,
@@ -57,6 +56,7 @@ export function useChatMessages(props: {
   const { toggleFormVisibility } = props
   const [messages, setMessages] = useState<Array<ChatMessage>>([])
   const [isTyping, setIsTyping] = useState(false)
+  const [isSupportAgentConnected, setIsSupportAgentConnected] = useState(false)
   const senderRef = useRef<Sender | null>(null)
 
   const setSender = useCallback((sender: Sender | null) => {
@@ -66,7 +66,19 @@ export function useChatMessages(props: {
   const clearMessages = useCallback(() => {
     setMessages([])
     setIsTyping(false)
+    setIsSupportAgentConnected(false)
   }, [])
+
+  const resolveDisplayRole = useCallback(
+    (role: unknown): Role => {
+      if (role === 'user') return 'user'
+      if (role === 'support_agent') return 'support_agent'
+      if (role === 'ai') return 'ai'
+      // System text is attributed to whoever is currently handling the chat.
+      return isSupportAgentConnected ? 'support_agent' : 'ai'
+    },
+    [isSupportAgentConnected],
+  )
 
   const appendUserMessage = useCallback(
     (
@@ -129,78 +141,51 @@ export function useChatMessages(props: {
     (payload: unknown) => {
       if (!payload) return
 
-      if (typeof payload === 'string') {
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: payload,
-            contentType: 'text',
-            timestamp: formatTimestamp(new Date()),
-          },
-        ])
-        return
-      }
-
       if (typeof payload !== 'object' || payload === null) return
       const obj = payload as Record<string, unknown>
 
-      // Typing indicator events
+      // Typing is a system event — never a chat bubble.
       if (obj.type === 'typing' && typeof obj.is_typing === 'boolean') {
         const ev = obj as unknown as ServerTypingEvent
-        if (ev.from === 'assistant' || ev.from === 'agent') {
+        if (ev.from === 'system') {
           setIsTyping(ev.is_typing)
         }
+        return
+      }
+
+      // Form-capture events drive the form UI, not bubble role attribution.
+      if (obj.type === 'form_required') {
+        toggleFormVisibility(true)
         return
       }
 
       if (obj.type === 'form_capture') {
         const ev = obj as unknown as ServerFormCapturedEvent
         toggleFormVisibility(false)
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: ev.message,
-            contentType: 'text',
-            timestamp: formatTimestamp(new Date()),
-          },
-        ])
+        if (ev.message) {
+          setMessages(prev => [
+            ...prev,
+            {
+              role: resolveDisplayRole('system'),
+              content: ev.message,
+              contentType: 'text',
+              timestamp: formatTimestamp(new Date()),
+            },
+          ])
+        }
         clearTyping()
         return
       }
 
-      if (obj.type === 'form_required') {
-        toggleFormVisibility(true)
-        return
-      }
-
-      // Errors from server
-      if (obj.type === 'error' && typeof obj.message === 'string') {
-        const ev = obj as unknown as ServerErrorEvent
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: ev.message,
-            contentType: 'text',
-            timestamp: formatTimestamp(new Date()),
-          },
-        ])
-        clearTyping()
-        return
-      }
-
-      // Regular messages
+      // Regular / system text messages
       const ev = obj as unknown as ServerMessageEvent
       const content = extractText(ev.content) || extractText(ev.message)
       if (!content) return
 
-      const role: Role =
-        typeof ev.role === 'string' &&
-        (ev.role === 'user' || ev.role === 'assistant' || ev.role === 'agent')
-          ? ev.role
-          : 'assistant'
+      const role = resolveDisplayRole(ev.role)
+      if (role === 'support_agent') {
+        setIsSupportAgentConnected(true)
+      }
 
       setMessages(prev => [
         ...prev,
@@ -216,7 +201,7 @@ export function useChatMessages(props: {
       ])
       clearTyping()
     },
-    [toggleFormVisibility, clearTyping],
+    [toggleFormVisibility, clearTyping, resolveDisplayRole],
   )
 
   return {

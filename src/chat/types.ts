@@ -22,14 +22,14 @@ export type FileMessage = {
 
 export type ServerTypingEvent = {
   type: 'typing'
-  from?: 'assistant' | 'agent' | 'user' | string
+  from: 'system'
   is_typing: boolean
   conversation_id?: string
 }
 
 export type ServerFormCapturedEvent = {
   type: 'form_capture'
-  role: 'assistant'
+  role: 'system'
   message: string
   conversation_id: string
 }

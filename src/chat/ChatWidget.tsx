@@ -10,7 +10,7 @@ import { useChatSession } from './hooks/useChatSession'
 import { useChatSocket } from './hooks/useChatSocket'
 import { useChatMessages } from './hooks/useChatMessages'
 import { ConnectionStatus } from './components/ConnectionStatus'
-import { type FileMessage, type FormCaptureData } from './types'
+import { type FileMessage, type FormCaptureData, type ServerErrorEvent } from './types'
 import { InfoBanner, type BannerMessage } from './components/InfoBanner'
 
 const MOBILE_MAX_WIDTH_PX = 768
@@ -65,21 +65,62 @@ export default function ChatWidget(props: WidgetProps) {
   const { messages, isTyping, appendUserMessage, clearMessages, handleServerJson, clearTyping, setSender } =
     useChatMessages({ toggleFormVisibility })
 
-  const { sendJsonMessage, readyState } = useChatSocket({
+  // useChatSocket owns disconnect, so route it through a ref to keep the two
+  // hooks independent of each other.
+  const disconnectRef = useRef<() => void>(() => {})
+
+  const onServerMessage = useCallback(
+    (payload: unknown) => {
+      const type =
+        payload && typeof payload === 'object'
+          ? (payload as { type?: unknown }).type
+          : undefined
+
+      if (type === 'end_chat') {
+        disconnectRef.current()
+        clearSession()
+        clearMessages()
+        return
+      }
+
+      // Server errors surface in the banner instead of the message list so they
+      // don't read like part of the conversation.
+      if (type === 'error') {
+        const message = (payload as ServerErrorEvent).message
+        setBannerMessage({
+          content:
+            typeof message === 'string' && message.trim()
+              ? message
+              : 'Something went wrong. Please try again.',
+          variant: 'error',
+        })
+        clearTyping()
+        return
+      }
+
+      handleServerJson(payload)
+    },
+    [clearSession, clearMessages, clearTyping, handleServerJson],
+  )
+
+  const { sendJsonMessage, readyState, disconnect } = useChatSocket({
     isOpen,
     token,
     conversationId,
-    onServerMessage: handleServerJson,
-    onClose: clearTyping,
+    onServerMessage,
+    onCloseCleanUp: clearTyping,
   })
+
+  useEffect(() => {
+    disconnectRef.current = disconnect
+  }, [disconnect])
 
   useEffect(() => {
     setSender(isOpen ? { readyState, sendJsonMessage } : null)
   }, [isOpen, readyState, sendJsonMessage, setSender])
 
   const endChat = () => {
-    clearSession()
-    clearMessages()
+    sendJsonMessage({ type: 'end_chat' })
   }
 
   const openChat = () => {
