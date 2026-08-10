@@ -48,7 +48,7 @@ export default function ChatBody(props: {
   const disableFormSubmit = !email.trim() || !phone.trim() || !name.trim()
 
   return (
-    <>
+    <div className='flex flex-col gap-0.5 px-2 py-2'>
       {messagesMeta.map((message, idx) => {
         const prev = idx > 0 ? messagesMeta[idx - 1] : undefined
         const next = idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined
@@ -70,16 +70,12 @@ export default function ChatBody(props: {
 
         const bubbleClassName = [
           'chat-bubble-shape',
-          // typography + wrapping
-          'text-[13px] leading-[1.4] tracking-[-0.01em]',
+          'text-[13px] leading-[1.45] tracking-[-0.01em]',
           'overflow-wrap:anywhere break-words',
-          // size + padding
-          'w-fit px-[0.85em] py-[0.5em]',
-          // role alignment + colors
+          'w-fit px-[0.9em] py-[0.55em]',
           message.side === 'user'
-            ? 'ml-auto max-w-[75%] bg-sky-600/80 text-white'
-            : 'mr-auto max-w-[92%] bg-gray-300/80 text-black',
-          // tail
+            ? 'ml-auto max-w-[78%] chat-bubble-user'
+            : 'mr-auto max-w-[92%] chat-bubble-staff',
           message.isLastOfGroup ? (message.side === 'user' ? 'chat-tail-user' : 'chat-tail-staff') : '',
         ]
           .filter(Boolean)
@@ -90,7 +86,7 @@ export default function ChatBody(props: {
             key={`${message.timestamp}-${idx}`}
             className={[
               'flex flex-col',
-              isContinued ? 'mt-0.5' : 'mt-1.5',
+              isContinued ? 'mt-0.5' : 'mt-2',
             ].join(' ')}>
             <div
               className={`${bubbleClassName} chat-markdown`}
@@ -100,17 +96,17 @@ export default function ChatBody(props: {
             {(showAvatar || showTimestamp) && (
               <div
                 className={[
-                  'mt-0.5 flex items-center gap-1.5 px-2',
+                  'mt-1 flex items-center gap-1.5 px-1.5',
                   message.side === 'user' ? 'justify-end' : 'justify-start',
                 ].join(' ')}>
                 {showAvatar && (
                   <div
-                    className='inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-900/10 text-[10px] font-semibold tracking-[-0.02em] text-slate-900/70'>
+                    className='inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold tracking-[-0.02em] text-slate-600 ring-1 ring-slate-900/8 shadow-sm'>
                     {message.initials}
                   </div>
                 )}
                 {showTimestamp && (
-                  <div className='select-none text-[9px] italic leading-none text-slate-900/45'>{timeText}</div>
+                  <div className='select-none text-[9px] italic leading-none text-slate-500/70'>{timeText}</div>
                 )}
               </div>
             )}
@@ -120,17 +116,20 @@ export default function ChatBody(props: {
 
       {showFormCapture && (
         <form
-          className='mt-2 flex w-full max-w-60 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm'
+          className='mt-3 flex w-full max-w-64 flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm'
           onSubmit={event => {
             event.preventDefault()
             onFormSubmit()
           }}>
+          <div className='text-[11px] font-medium text-slate-600'>
+            Share your details to continue
+          </div>
           <label className='sr-only' htmlFor='capture-name'>
             Name
           </label>
           <input
-            id='capture-email'
-            className='h-8 w-full rounded border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
+            id='capture-name'
+            className='h-9 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100'
             type='text'
             name='name'
             value={name}
@@ -144,7 +143,7 @@ export default function ChatBody(props: {
           </label>
           <input
             id='capture-email'
-            className='h-8 w-full rounded border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
+            className='h-9 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100'
             type='email'
             name='email'
             value={email}
@@ -159,7 +158,7 @@ export default function ChatBody(props: {
           </label>
           <input
             id='capture-phone'
-            className='h-8 w-full rounded border border-slate-200 bg-slate-50 px-2.5 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100'
+            className='h-9 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100'
             type='tel'
             name='phone'
             value={phone}
@@ -171,14 +170,14 @@ export default function ChatBody(props: {
           />
 
           <button
-            className='h-8 self-end rounded bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
+            className='mt-0.5 h-9 self-end rounded-full bg-slate-900 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
             disabled={disableFormSubmit}
             type='submit'>
             Submit
           </button>
         </form>
       )}
-    </>
+    </div>
   )
 }
 

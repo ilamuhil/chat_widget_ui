@@ -15,9 +15,11 @@ import { InfoBanner, type BannerMessage } from './components/InfoBanner'
 
 const MOBILE_MAX_WIDTH_PX = 768
 const CLOSE_ANIMATION_MS = 320
+const END_CHAT_WAVE_MS = 720
 const SUPPORT_TITLE = 'Support'
 const SUPPORT_META = 'Typically replies in ~5 min'
 const SUPPORT_EMAIL_HREF = 'mailto:support@example.com'
+const BOT_NAME = 'Assist Bot'
 const FORM_CAPTURED_KEY = 'form_data'
 const FORM_CAPTURED_VALUE = 'captured'
 
@@ -34,6 +36,8 @@ export default function ChatWidget(props: WidgetProps) {
     content: null,
     variant: 'info',
   })
+  const [isEndingChat, setIsEndingChat] = useState(false)
+  const endChatTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isOnline = true
 
   const isMobile = useIsMobile(MOBILE_MAX_WIDTH_PX)
@@ -67,7 +71,7 @@ export default function ChatWidget(props: WidgetProps) {
 
   // useChatSocket owns disconnect, so route it through a ref to keep the two
   // hooks independent of each other.
-  const disconnectRef = useRef<() => void>(() => {})
+  const disconnectRef = useRef<() => void>(() => { })
 
   const onServerMessage = useCallback(
     (payload: unknown) => {
@@ -120,8 +124,21 @@ export default function ChatWidget(props: WidgetProps) {
   }, [isOpen, readyState, sendJsonMessage, setSender])
 
   const endChat = () => {
-    sendJsonMessage({ type: 'end_chat' })
+    if (isEndingChat) return
+    setIsEndingChat(true)
+    if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current)
+    endChatTimerRef.current = window.setTimeout(() => {
+      sendJsonMessage({ type: 'end_chat' })
+      setIsEndingChat(false)
+      endChatTimerRef.current = undefined
+    }, END_CHAT_WAVE_MS)
   }
+
+  useEffect(() => {
+    return () => {
+      if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current)
+    }
+  }, [])
 
   const openChat = () => {
     setIsOpen(true)
@@ -233,71 +250,92 @@ export default function ChatWidget(props: WidgetProps) {
         }
         role='dialog'
       >
-        <div className='flex items-center justify-between gap-3 border-b border-slate-900/10 px-3.5 py-3'>
-          <div className='min-w-0 flex flex-col gap-1'>
-            <div className='min-w-0 flex items-center gap-2'>
-              <div className='truncate text-sm font-bold leading-tight text-slate-900'>
+        {isEndingChat && (
+          <div className='chat-end-wave' aria-hidden='true'>
+            <div className='chat-end-wave__shimmer' />
+          </div>
+        )}
+        <header className='chat-panel-header relative shrink-0'>
+          <div className='flex items-center gap-3 px-3.5 pt-3.5 pb-2.5'>
+            <div className='relative flex-none'>
+              <img
+                className='h-11 w-11 rounded-full object-cover ring-2 ring-white/90 shadow-[0_2px_8px_rgba(15,23,42,0.12)] bg-white'
+                src={ChatImage}
+                alt=''
+              />
+              <span
+                className={[
+                  'absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white',
+                  isOnline ? 'bg-emerald-500' : 'bg-slate-400',
+                ].join(' ')}
+                aria-hidden='true'
+              />
+            </div>
+            <div className='min-w-0 flex-1'>
+              <div className='truncate text-[15px] font-semibold tracking-[-0.01em] leading-tight text-slate-900'>
+                {BOT_NAME}
+              </div>
+              <div className='mt-0.5 text-[11px] leading-tight text-slate-600/80'>
+                {isOnline ? 'Online now' : 'Offline'}
+              </div>
+            </div>
+
+            <div className='inline-flex flex-none items-center gap-1'>
+              <a
+                className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full bg-white/55 text-slate-700/80 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-900 active:translate-y-px'
+                href={SUPPORT_EMAIL_HREF}
+                aria-label='Email support'>
+                <IconEmail />
+              </a>
+
+              {!isMobile && (
+                <button
+                  className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full bg-white/55 text-slate-700/80 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-900 active:translate-y-px'
+                  type='button'
+                  aria-label={
+                    isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
+                  }
+                  onClick={() => setIsFullscreen(v => !v)}>
+                  <IconFullscreen />
+                </button>
+              )}
+
+              <button
+                className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full bg-white/55 text-slate-700/80 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-900 active:translate-y-px'
+                type='button'
+                aria-label='Close chat'
+                onClick={closeChat}>
+                <IconClose />
+              </button>
+            </div>
+          </div>
+
+          <div className='flex items-center justify-between gap-3 px-3.5 pb-3 pt-1'>
+            <div className='min-w-0'>
+              <div className='truncate text-xs font-semibold tracking-[-0.01em] text-slate-800/90'>
                 {SUPPORT_TITLE}
               </div>
-              <div className='inline-flex items-center gap-1.5 text-xs leading-none text-slate-900/70'>
-                <span
-                  className={[
-                    'h-2 w-2 rounded-full',
-                    isOnline ? 'bg-emerald-500' : 'bg-red-500',
-                  ].join(' ')}
-                  aria-hidden='true'
-                />
-                {isOnline ? 'Online' : 'Offline'}
+              <div className='mt-0.5 text-[11px] leading-tight text-slate-600/70'>
+                {SUPPORT_META}
               </div>
             </div>
-            <div className='text-xs leading-tight text-slate-900/55'>
-              {SUPPORT_META}
-            </div>
           </div>
-
-          <div className='inline-flex flex-none items-center gap-1.5'>
-            <a
-              className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10 active:translate-y-px'
-              href={SUPPORT_EMAIL_HREF}
-              aria-label='Email support'>
-              <IconEmail />
-            </a>
-
-            {!isMobile && (
-              <button
-                className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10 active:translate-y-px'
-                type='button'
-                aria-label={
-                  isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'
-                }
-                onClick={() => setIsFullscreen(v => !v)}>
-                <IconFullscreen />
-              </button>
-            )}
-
-            <button
-              className='pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10 active:translate-y-px'
-              type='button'
-              aria-label='Close chat'
-              onClick={closeChat}>
-              <IconClose />
-            </button>
-          </div>
-        </div>
+        </header>
         <InfoBanner
           message={bannerMessage}
           onClose={() => setBannerMessage(prev => ({ ...prev, content: null }))}
         />
         <button
-          className='pointer-events-auto rounded-b-sm bg-slate-900/5 px-2.5 py-2 text-[10px] font-medium leading-none text-slate-900/70 hover:bg-slate-900/10 w-full hover:cursor-pointer'
+          className='pointer-events-auto rounded-b-sm bg-slate-900/3 px-2.5 py-2 text-[10px] font-medium leading-none text-slate-900/60 hover:bg-slate-900/6 w-full hover:cursor-pointer disabled:cursor-wait disabled:opacity-60'
           type='button'
           aria-label='End chat'
+          disabled={isEndingChat}
           onClick={endChat}>
-          End Chat
+          {isEndingChat ? 'Ending…' : 'End Chat'}
         </button>
 
-        <div className='flex flex-1 min-h-0 flex-col'>
-          <div className='flex-1 min-h-0 overflow-auto overflow-x-hidden p-1 no-scrollbar' ref={messagesEndRef}>
+        <div className='chat-panel-body flex flex-1 min-h-0 flex-col'>
+          <div className='flex-1 min-h-0 overflow-auto overflow-x-hidden no-scrollbar' ref={messagesEndRef}>
             <ChatBody
               messages={messages}
               showFormCapture={showFormCapture}

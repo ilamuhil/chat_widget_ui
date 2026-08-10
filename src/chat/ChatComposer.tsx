@@ -123,9 +123,9 @@ export default function ChatComposer(props: {
   }, [value])
 
   return (
-    <div className='flex flex-col gap-1.5 border-t border-slate-900/10 bg-white/90 p-2.5 backdrop-blur'>
-      <div className='flex items-end gap-2'>
-        <label className='pointer-events-auto inline-grid h-9 w-9 cursor-pointer place-items-center rounded-xl bg-slate-900/5 text-slate-900/80 hover:bg-slate-900/10'>
+    <div className='chat-panel-composer flex flex-col gap-1.5 p-2.5'>
+      <div className='flex items-end gap-2 rounded-2xl border border-slate-200/70 bg-white/80 p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)]'>
+        <label className='pointer-events-auto inline-grid h-9 w-9 cursor-pointer place-items-center rounded-full text-slate-600/80 hover:bg-slate-900/5 hover:text-slate-800'>
           <input
             className='sr-only'
             type='file'
@@ -140,7 +140,7 @@ export default function ChatComposer(props: {
         <textarea
           title={props.showFormCapture ? 'Please fill in the form to continue the conversation' : 'Type a message…'}
           disabled={props.showFormCapture}
-          className='pointer-events-auto h-9 min-h-9 flex-1 resize-none rounded-xl bg-slate-900/5 px-3 py-2 text-[13px] leading-5 tracking-[-0.01em] text-slate-900 outline-none placeholder:text-[13px] placeholder:italic placeholder:text-slate-900/50'
+          className='pointer-events-auto h-9 min-h-9 flex-1 resize-none rounded-xl bg-transparent px-2 py-2 text-[13px] leading-5 tracking-[-0.01em] text-slate-900 outline-none placeholder:text-[13px] placeholder:text-slate-400/90 disabled:opacity-60'
           value={value}
           onChange={e => setValue(e.target.value)}
           placeholder='Type a message…'
@@ -158,7 +158,7 @@ export default function ChatComposer(props: {
         />
 
         <button
-          className='pointer-events-auto inline-grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-white disabled:cursor-not-allowed disabled:opacity-50'
+          className='pointer-events-auto inline-grid h-9 w-9 place-items-center rounded-full bg-sky-600 text-white shadow-sm transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40'
           type='button'
           disabled={!value.trim() || props.showFormCapture}
           aria-label='Send message'
