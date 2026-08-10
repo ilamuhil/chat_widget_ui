@@ -25,12 +25,8 @@ pnpm build
 ## Key features
 
 - **Multi-line composer**: `Enter` sends, `Shift+Enter` inserts a newline
-- **Message grouping**:
-  - bubbles align **right** for `user`, **left** for `assistant`/`agent`
-  - curved “tail” only on the **last message in a group**
-  - timestamps show only on the **last message** in a consecutive same-sender + same-minute block
-- **Typing indicator**: dot1 → dot2 → dot3, pause, repeat
-- **Optional branding banner** below the composer (“Powered by …”)
+- **Message grouping**
+- **Typing indicator**
 
 ## Project structure
 

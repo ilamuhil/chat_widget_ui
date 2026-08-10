@@ -26,6 +26,41 @@
   backdrop-filter: blur(10px);
 }
 
+/* Lead capture fills the panel body as a dedicated first step */
+.chat-lead-capture {
+  background:
+    radial-gradient(90% 60% at 0% 0%, rgba(56, 189, 248, 0.1), transparent 55%),
+    radial-gradient(70% 50% at 100% 100%, rgba(148, 163, 184, 0.12), transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 55%, #f1f5f9 100%);
+}
+
+.chat-lead-capture--fullscreen {
+  background:
+    radial-gradient(70% 55% at 15% 0%, rgba(56, 189, 248, 0.14), transparent 60%),
+    radial-gradient(55% 45% at 85% 100%, rgba(148, 163, 184, 0.16), transparent 55%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 48%, #eef2f7 100%);
+}
+
+.chat-lead-capture-panel {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 18px 40px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.chat-lead-input {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.chat-lead-input:focus {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 0 0 2px rgba(125, 211, 252, 0.35);
+}
+
 .chat-bubble-user {
   background: linear-gradient(160deg, rgba(14, 165, 233, 0.92) 0%, rgba(2, 132, 199, 0.88) 100%);
   color: #fff;
@@ -61,7 +96,7 @@
     rgba(148, 163, 184, 0.12) 75%,
     transparent 100%
   );
-  animation: chat-end-wave-sweep 720ms ease-in-out forwards;
+  animation: chat-end-wave-sweep 1500ms ease-in-out forwards;
 }
 
 @keyframes chat-end-wave-sweep {

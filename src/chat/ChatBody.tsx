@@ -3,6 +3,7 @@ import type { ChatMessage } from './types'
 import { toHHmm } from './utils/time'
 import DOMPurify from 'dompurify'
 import { Marked } from 'marked'
+import FormCapture from './FormCapture'
 
 const markdown = new Marked({
   breaks: true,
@@ -42,10 +43,36 @@ export default function ChatBody(props: {
   setPhone: (phone: string) => void
   setName: (name: string) => void
   showFormCapture: boolean
+  layoutFullscreen?: boolean
 }) {
-  const { messages, onFormSubmit, email, phone, setEmail, setPhone, showFormCapture, name, setName } = props
+  const {
+    messages,
+    onFormSubmit,
+    email,
+    phone,
+    setEmail,
+    setPhone,
+    showFormCapture,
+    name,
+    setName,
+    layoutFullscreen = false,
+  } = props
   const messagesMeta = getMessageMeta(messages)
-  const disableFormSubmit = !email.trim() || !phone.trim() || !name.trim()
+
+  if (showFormCapture) {
+    return (
+      <FormCapture
+        onFormSubmit={onFormSubmit}
+        email={email}
+        phone={phone}
+        name={name}
+        setEmail={setEmail}
+        setPhone={setPhone}
+        setName={setName}
+        layoutFullscreen={layoutFullscreen}
+      />
+    )
+  }
 
   return (
     <div className='flex flex-col gap-0.5 px-2 py-2'>
@@ -113,72 +140,6 @@ export default function ChatBody(props: {
           </div>
         )
       })}
-
-      {showFormCapture && (
-        <form
-          className='mt-3 flex w-full max-w-64 flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm'
-          onSubmit={event => {
-            event.preventDefault()
-            onFormSubmit()
-          }}>
-          <div className='text-[11px] font-medium text-slate-600'>
-            Share your details to continue
-          </div>
-          <label className='sr-only' htmlFor='capture-name'>
-            Name
-          </label>
-          <input
-            id='capture-name'
-            className='h-9 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100'
-            type='text'
-            name='name'
-            value={name}
-            onChange={event => setName(event.target.value)}
-            autoComplete='name'
-            placeholder='Name'
-            required
-          />
-          <label className='sr-only' htmlFor='capture-email'>
-            Email address
-          </label>
-          <input
-            id='capture-email'
-            className='h-9 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100'
-            type='email'
-            name='email'
-            value={email}
-            onChange={event => setEmail(event.target.value)}
-            autoComplete='email'
-            placeholder='Email address'
-            required
-          />
-
-          <label className='sr-only' htmlFor='capture-phone'>
-            Phone number
-          </label>
-          <input
-            id='capture-phone'
-            className='h-9 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100'
-            type='tel'
-            name='phone'
-            value={phone}
-            onChange={event => setPhone(event.target.value)}
-            autoComplete='tel'
-            inputMode='tel'
-            placeholder='Phone number'
-            required
-          />
-
-          <button
-            className='mt-0.5 h-9 self-end rounded-full bg-slate-900 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50'
-            disabled={disableFormSubmit}
-            type='submit'>
-            Submit
-          </button>
-        </form>
-      )}
     </div>
   )
 }
-
-
