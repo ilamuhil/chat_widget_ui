@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   ChatMessage,
   Role,
@@ -11,6 +11,9 @@ import type {
 import { formatTimestamp } from '../utils/time'
 import bopUrl from '../../assets/audio/bop.mp3'
 import type { SocketReadyState } from './useChatSocket'
+
+/** Failsafe — typing must not linger if nothing clears it. */
+const TYPING_FAILSAFE_MS = 45_000
 
 type Sender = {
   readyState: SocketReadyState
@@ -58,16 +61,52 @@ export function useChatMessages(props: {
   const [isTyping, setIsTyping] = useState(false)
   const [isSupportAgentConnected, setIsSupportAgentConnected] = useState(false)
   const senderRef = useRef<Sender | null>(null)
+  const typingFailsafeRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
 
   const setSender = useCallback((sender: Sender | null) => {
     senderRef.current = sender
   }, [])
 
+  const clearTypingFailsafe = useCallback(() => {
+    if (typingFailsafeRef.current) {
+      clearTimeout(typingFailsafeRef.current)
+      typingFailsafeRef.current = undefined
+    }
+  }, [])
+
+  const clearTyping = useCallback(() => {
+    clearTypingFailsafe()
+    setIsTyping(false)
+  }, [clearTypingFailsafe])
+
+  /**
+   * Typing is server-driven via `typing` events. Do not call this (or
+   * `setIsTyping(true)`) from client send/UI paths unless there is a strong,
+   * documented reason — and if you do, always clear via `clearTyping` so the
+   * failsafe timer cannot leak.
+   */
+  const enableTyping = useCallback(() => {
+    setIsTyping(true)
+    clearTypingFailsafe()
+    typingFailsafeRef.current = setTimeout(() => {
+      typingFailsafeRef.current = undefined
+      setIsTyping(false)
+    }, TYPING_FAILSAFE_MS)
+  }, [clearTypingFailsafe])
+
   const clearMessages = useCallback(() => {
     setMessages([])
-    setIsTyping(false)
+    clearTyping()
     setIsSupportAgentConnected(false)
-  }, [])
+  }, [clearTyping])
+
+  useEffect(() => {
+    return () => {
+      clearTypingFailsafe()
+    }
+  }, [clearTypingFailsafe])
 
   const resolveDisplayRole = useCallback(
     (role: unknown): Role => {
@@ -116,7 +155,7 @@ export function useChatMessages(props: {
         })
         toggleFormVisibility()
         playBopSound()
-        setIsTyping(true)
+        // Typing indicator is owned by server `typing` events — do not enable here.
       }
 
       //Update the ui if this is not a form capture message.
@@ -133,10 +172,6 @@ export function useChatMessages(props: {
     [toggleFormVisibility],
   )
 
-  const clearTyping = useCallback(() => {
-    setIsTyping(false)
-  }, [])
-
   const handleServerJson = useCallback(
     (payload: unknown) => {
       if (!payload) return
@@ -145,10 +180,15 @@ export function useChatMessages(props: {
       const obj = payload as Record<string, unknown>
 
       // Typing is a system event — never a chat bubble.
-      if (obj.type === 'typing' && typeof obj.is_typing === 'boolean') {
-        const ev = obj as unknown as ServerTypingEvent
-        if (ev.from === 'system') {
-          setIsTyping(ev.is_typing)
+      // Server shape: { type: "typing", from: "system", is_typing, conversation_id }
+      if (obj.type === 'typing') {
+        if (
+          obj.from === 'system' &&
+          typeof obj.is_typing === 'boolean'
+        ) {
+          const ev = obj as ServerTypingEvent
+          if (ev.is_typing) enableTyping()
+          else clearTyping()
         }
         return
       }
@@ -201,7 +241,7 @@ export function useChatMessages(props: {
       ])
       clearTyping()
     },
-    [toggleFormVisibility, clearTyping, resolveDisplayRole],
+    [toggleFormVisibility, clearTyping, enableTyping, resolveDisplayRole],
   )
 
   return {
