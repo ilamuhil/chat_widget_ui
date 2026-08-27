@@ -131,6 +131,7 @@ export default function ChatWidget(props: WidgetProps) {
     token,
     conversationId,
     onServerMessage,
+    bot_id: props.bot_id,
     onCloseCleanUp: clearTyping,
   });
 

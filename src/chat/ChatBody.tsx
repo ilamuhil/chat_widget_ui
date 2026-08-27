@@ -1,14 +1,14 @@
-import { getMessageMeta } from '../helpers'
-import type { ChatMessage } from './types'
-import { toHHmm } from './utils/time'
-import DOMPurify from 'dompurify'
-import { Marked } from 'marked'
-import FormCapture from './FormCapture'
+import { getMessageMeta } from "../helpers";
+import type { ChatMessage } from "./types";
+import { toHHmm } from "./utils/time";
+import DOMPurify from "dompurify";
+import { Marked } from "marked";
+import FormCapture from "./FormCapture";
 
 const markdown = new Marked({
   breaks: true,
   gfm: true,
-})
+});
 
 function normalizeDefinitionLists(source: string) {
   // Support the Pandoc-style syntax commonly emitted by LLMs:
@@ -16,34 +16,34 @@ function normalizeDefinitionLists(source: string) {
   // : Definition
   return source.replace(
     /^([^\n]+)\n: ([^\n]+)(?=\n|$)/gm,
-    '<dl><dt>$1</dt><dd>$2</dd></dl>',
-  )
+    "<dl><dt>$1</dt><dd>$2</dd></dl>",
+  );
 }
 
 function openExternalLinksInNewTab(html: string) {
   return html.replace(/<a\b([^>]*)>/gi, (tag, attributes: string) => {
-    const href = attributes.match(/\bhref=(["'])(.*?)\1/i)?.[2]
-    if (!href || href.startsWith('#')) return tag
+    const href = attributes.match(/\bhref=(["'])(.*?)\1/i)?.[2];
+    if (!href || href.startsWith("#")) return tag;
 
     const cleanAttributes = attributes
-      .replace(/\s+target=(["']).*?\1/gi, '')
-      .replace(/\s+rel=(["']).*?\1/gi, '')
+      .replace(/\s+target=(["']).*?\1/gi, "")
+      .replace(/\s+rel=(["']).*?\1/gi, "");
 
-    return `<a${cleanAttributes} target="_blank" rel="noopener noreferrer">`
-  })
+    return `<a${cleanAttributes} target="_blank" rel="noopener noreferrer">`;
+  });
 }
 
 export default function ChatBody(props: {
-  messages: Array<ChatMessage>
-  onFormSubmit: () => void
-  email: string
-  phone: string
-  name: string
-  setEmail: (email: string) => void
-  setPhone: (phone: string) => void
-  setName: (name: string) => void
-  showFormCapture: boolean
-  layoutFullscreen?: boolean
+  messages: Array<ChatMessage>;
+  onFormSubmit: () => void;
+  email: string;
+  phone: string;
+  name: string;
+  setEmail: (email: string) => void;
+  setPhone: (phone: string) => void;
+  setName: (name: string) => void;
+  showFormCapture: boolean;
+  layoutFullscreen?: boolean;
 }) {
   const {
     messages,
@@ -56,8 +56,8 @@ export default function ChatBody(props: {
     name,
     setName,
     layoutFullscreen = false,
-  } = props
-  const messagesMeta = getMessageMeta(messages)
+  } = props;
+  const messagesMeta = getMessageMeta(messages);
 
   if (showFormCapture) {
     return (
@@ -71,50 +71,56 @@ export default function ChatBody(props: {
         setName={setName}
         layoutFullscreen={layoutFullscreen}
       />
-    )
+    );
   }
 
   return (
-    <div className='flex flex-col gap-0.5 px-2 py-2'>
+    <div className="flex flex-col gap-0.5 px-2 py-2">
       {messagesMeta.map((message, idx) => {
-        const prev = idx > 0 ? messagesMeta[idx - 1] : undefined
-        const next = idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined
-        const normalized = normalizeDefinitionLists(message.content)
-        const rendered = markdown.parse(normalized, { async: false })
-        const renderedHtml = typeof rendered === 'string' ? rendered : ''
+        const prev = idx > 0 ? messagesMeta[idx - 1] : undefined;
+        const next =
+          idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined;
+        const normalized = normalizeDefinitionLists(message.content);
+        const rendered = markdown.parse(normalized, { async: false });
+        const renderedHtml = typeof rendered === "string" ? rendered : "";
         const sanitizedHtml = DOMPurify.sanitize(
           renderedHtml
-            .replaceAll('<table>', '<div class="chat-table-wrap"><table>')
-            .replaceAll('</table>', '</table></div>'),
-        )
-        const html = openExternalLinksInNewTab(sanitizedHtml)
-        const isContinued = !!prev && prev.side === message.side
-        const showAvatar = message.side === 'staff' && message.isLastOfGroup
+            .replaceAll("<table>", '<div class="chat-table-wrap"><table>')
+            .replaceAll("</table>", "</table></div>"),
+        );
+        const html = openExternalLinksInNewTab(sanitizedHtml);
+        const isContinued = !!prev && prev.side === message.side;
+        const showAvatar = message.side === "staff" && message.isLastOfGroup;
 
-        const timeText = toHHmm(message.timestamp)
-        const nextTimeText = next ? toHHmm(next.timestamp) : undefined
-        const showTimestamp = !next || next.side !== message.side || nextTimeText !== timeText
+        const timeText = toHHmm(message.timestamp);
+        const nextTimeText = next ? toHHmm(next.timestamp) : undefined;
+        const showTimestamp =
+          !next || next.side !== message.side || nextTimeText !== timeText;
 
         const bubbleClassName = [
-          'chat-bubble-shape',
-          'text-[13px] leading-[1.45] tracking-[-0.01em]',
-          'overflow-wrap:anywhere break-words',
-          'w-fit px-[0.9em] py-[0.55em]',
-          message.side === 'user'
-            ? 'ml-auto max-w-[78%] chat-bubble-user'
-            : 'mr-auto max-w-[92%] chat-bubble-staff',
-          message.isLastOfGroup ? (message.side === 'user' ? 'chat-tail-user' : 'chat-tail-staff') : '',
+          "chat-bubble-shape",
+          "text-[13px] leading-[1.45] tracking-[-0.01em]",
+          "overflow-wrap:anywhere break-words",
+          "w-fit px-[0.9em] py-[0.55em]",
+          message.side === "user"
+            ? "ml-auto max-w-[78%] chat-bubble-user"
+            : "mr-auto max-w-[92%] chat-bubble-staff",
+          message.isLastOfGroup
+            ? message.side === "user"
+              ? "chat-tail-user"
+              : "chat-tail-staff"
+            : "",
         ]
           .filter(Boolean)
-          .join(' ')
+          .join(" ");
 
         return (
           <div
             key={`${message.timestamp}-${idx}`}
-            className={[
-              'flex flex-col',
-              isContinued ? 'mt-0.5' : 'mt-2',
-            ].join(' ')}>
+            className={["flex flex-col", isContinued ? "mt-0.5" : "mt-2"].join(
+              " ",
+            )}
+          >
             <div
               className={`${bubbleClassName} chat-markdown`}
               dangerouslySetInnerHTML={{ __html: html }}
@@ -123,23 +129,25 @@ export default function ChatBody(props: {
             {(showAvatar || showTimestamp) && (
               <div
                 className={[
-                  'mt-1 flex items-center gap-1.5 px-1.5',
-                  message.side === 'user' ? 'justify-end' : 'justify-start',
-                ].join(' ')}>
+                  "mt-1 flex items-center gap-1.5 px-1.5",
+                  message.side === "user" ? "justify-end" : "justify-start",
+                ].join(" ")}
+              >
                 {showAvatar && (
-                  <div
-                    className='inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold tracking-[-0.02em] text-slate-600 ring-1 ring-slate-900/8 shadow-sm'>
+                  <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold tracking-[-0.02em] text-slate-600 ring-1 ring-slate-900/8 shadow-sm">
                     {message.initials}
                   </div>
                 )}
                 {showTimestamp && (
-                  <div className='select-none text-[9px] italic leading-none text-slate-500/70'>{timeText}</div>
+                  <div className="select-none text-[9px] italic leading-none text-slate-500/70">
+                    {timeText}
+                  </div>
                 )}
               </div>
             )}
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
