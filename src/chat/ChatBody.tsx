@@ -20,6 +20,10 @@ function normalizeDefinitionLists(source: string) {
   )
 }
 
+function isThematicBreakMessage(source: string) {
+  return /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(source)
+}
+
 function openExternalLinksInNewTab(html: string) {
   return html.replace(/<a\b([^>]*)>/gi, (tag, attributes: string) => {
     const href = attributes.match(/\bhref=(["'])(.*?)\1/i)?.[2]
@@ -77,6 +81,18 @@ export default function ChatBody(props: {
   return (
     <div className='flex flex-col gap-0.5 px-2 py-2'>
       {messagesMeta.map((message, idx) => {
+        if (isThematicBreakMessage(message.content)) {
+          return (
+            <div
+              key={`${message.timestamp}-${idx}`}
+              className='my-2 flex items-center px-3'
+              role='separator'
+              aria-hidden='true'>
+              <hr className='chat-message-separator' />
+            </div>
+          )
+        }
+
         const prev = idx > 0 ? messagesMeta[idx - 1] : undefined
         const next = idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined
         const normalized = normalizeDefinitionLists(message.content)
