@@ -90,7 +90,7 @@ export default function ChatWidget(props: WidgetProps) {
 
   // useChatSocket owns disconnect, so route it through a ref to keep the two
   // hooks independent of each other.
-  const disconnectRef = useRef<() => void>(() => {});
+  const disconnectRef = useRef<() => void>(() => { });
 
   const onServerMessage = useCallback(
     (payload: unknown) => {
@@ -103,6 +103,7 @@ export default function ChatWidget(props: WidgetProps) {
         disconnectRef.current();
         clearSession();
         clearMessages();
+        setBannerMessage((prev) => ({ ...prev, content: null }))
         return;
       }
 
@@ -266,20 +267,20 @@ export default function ChatWidget(props: WidgetProps) {
         style={
           layoutFullscreen
             ? {
-                top: "var(--chat-fullscreen-top)",
-                right: "var(--chat-fullscreen-right)",
-                bottom: "var(--chat-fullscreen-bottom)",
-                left: "var(--chat-fullscreen-left)",
-                borderRadius: "var(--chat-fullscreen-radius)",
-                boxShadow: "0 24px 80px rgba(15, 23, 42, 0.35)",
-              }
+              top: "var(--chat-fullscreen-top)",
+              right: "var(--chat-fullscreen-right)",
+              bottom: "var(--chat-fullscreen-bottom)",
+              left: "var(--chat-fullscreen-left)",
+              borderRadius: "var(--chat-fullscreen-radius)",
+              boxShadow: "0 24px 80px rgba(15, 23, 42, 0.35)",
+            }
             : {
-                bottom: "calc(var(--chat-bubble-size) + var(--chat-gap))",
-                width: "min(var(--chat-panel-width), calc(100vw - 2rem))",
-                height:
-                  "min(var(--chat-panel-height), calc(100vh - var(--chat-panel-viewport-margin)))",
-                boxShadow: "0 18px 50px rgba(15, 23, 42, 0.25)",
-              }
+              bottom: "calc(var(--chat-bubble-size) + var(--chat-gap))",
+              width: "min(var(--chat-panel-width), calc(100vw - 2rem))",
+              height:
+                "min(var(--chat-panel-height), calc(100vh - var(--chat-panel-viewport-margin)))",
+              boxShadow: "0 18px 50px rgba(15, 23, 42, 0.25)",
+            }
         }
         role="dialog"
       >
@@ -417,6 +418,7 @@ export default function ChatWidget(props: WidgetProps) {
             onSend={handleSend}
             showFormCapture={showFormCapture}
             onBannerMessage={setBannerMessage}
+            token={token}
           />
         )}
       </div>

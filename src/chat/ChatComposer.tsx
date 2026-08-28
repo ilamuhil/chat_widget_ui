@@ -5,7 +5,10 @@ import { Spinner } from "./components/Spinner";
 
 //When the form is shown the text area and the send button will be disabled...
 
-const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>,
+  token: string | null,
+) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
@@ -16,7 +19,6 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("File size must be less than 5MB");
   }
-  console.log("file size is less than 5mb");
 
   // only pdf, docx, img, txt files are allowed
   const allowedExtensions = ["pdf", "docx", "img", "txt"];
@@ -24,11 +26,9 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   if (!extension || !allowedExtensions.includes(extension)) {
     throw new Error("Allowed file types are pdf, docx, img, txt");
   }
-  console.log("file type is allowed");
 
   const formData = new FormData();
   formData.append("file", file);
-  const token = localStorage.getItem("token");
   if (!token) throw new Error("Unauthorized");
   const response = await fetch(`${API_URL_BASE}/api/conversations/upload`, {
     headers: {
@@ -67,9 +67,10 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 };
 
 export default function ChatComposer(props: {
-  onSend: (message: string | { type: "file"; file_key: string }) => void;
-  showFormCapture: boolean;
-  onBannerMessage: (message: BannerMessage) => void;
+  onSend: (message: string | { type: "file"; file_key: string }) => void
+  showFormCapture: boolean
+  onBannerMessage: (message: BannerMessage) => void
+  token: string | null
 }) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -86,7 +87,7 @@ export default function ChatComposer(props: {
   const onFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setFileUploading(true);
-      const fileKey = await handleFileUpload(event);
+      const fileKey = await handleFileUpload(event, props.token);
       if (!fileKey) {
         props.onBannerMessage({
           content: "No file was selected",

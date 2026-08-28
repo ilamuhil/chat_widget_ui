@@ -151,11 +151,10 @@ export function useChatSocket(params: UseChatSocketParams) {
           if (watchDogTimerRef.current) clearTimeout(watchDogTimerRef.current);
           watchDogTimerRef.current = setTimeout(() => {
             if (awaitingPongRef.current) socket.close(4000, "Ping timeout");
-          }, 5000);
+          }, 15000);
         };
 
-        // Immediate health check, then every 20s.
-        sendPing();
+        // Wait for the server receive loop (bot prefs, etc.) before the first ping.
         heartbeatIntervalRef.current = setInterval(sendPing, 20000);
       };
       socket.onmessage = (evt: MessageEvent) => {
@@ -182,13 +181,22 @@ export function useChatSocket(params: UseChatSocketParams) {
         }
         onServerMessageRef.current?.(raw);
       };
-      socket.onclose = () => {
+      socket.onclose = (event: CloseEvent) => {
         //!IMPORTANT: this runs after the disconnect function defined below.
         clearHeartbeat();
-        if (cancelled) return;
+
+        const permanentFailure = event.code === 1008 || event.code === 1003;
         if (socketRef.current === socket) {
           socketRef.current = null;
         }
+
+        // Policy / protocol rejection — retrying only storms the server.
+        if (cancelled || permanentFailure) {
+          setReadyState("closed");
+          if (permanentFailure) onCloseRef.current?.();
+          return;
+        }
+
         const shouldReconnect = !manualCloseRef.current;
         if (shouldReconnect && attempt < 5) {
           const delay = Math.min(30_000, 2000 * 2 ** attempt);

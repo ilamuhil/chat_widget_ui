@@ -15,9 +15,14 @@ type UseChatSessionParams = {
   bot_id: string;
 };
 
-const STORAGE_TOKEN_KEY = "token";
-const STORAGE_CONVERSATION_ID_KEY = "conversation_id";
-const BOT_CONFIG_KEY = "bot_config";
+function sessionStorageKeys(bot_id: string) {
+  return {
+    token: `${bot_id}:token`,
+    conversationId: `${bot_id}:conversation_id`,
+    botConfig: `${bot_id}:bot_config`,
+    visitor: `${bot_id}:visitor_id`,
+  };
+}
 
 export function useChatSession(params: UseChatSessionParams) {
   const { api_key, bot_id } = params;
@@ -32,9 +37,10 @@ export function useChatSession(params: UseChatSessionParams) {
         authFailed: false,
       };
     }
+    const keys = sessionStorageKeys(bot_id);
     return {
-      token: localStorage.getItem(STORAGE_TOKEN_KEY),
-      conversationId: localStorage.getItem(STORAGE_CONVERSATION_ID_KEY),
+      token: localStorage.getItem(keys.token),
+      conversationId: localStorage.getItem(keys.conversationId),
       isAuthenticating: false,
       authFailed: false,
     };
@@ -42,9 +48,10 @@ export function useChatSession(params: UseChatSessionParams) {
 
   const clearSession = useCallback(() => {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(STORAGE_CONVERSATION_ID_KEY);
-    localStorage.removeItem(STORAGE_TOKEN_KEY);
-    localStorage.removeItem(BOT_CONFIG_KEY);
+    const keys = sessionStorageKeys(bot_id);
+    localStorage.removeItem(keys.conversationId);
+    localStorage.removeItem(keys.token);
+    localStorage.removeItem(keys.botConfig);
     setState((prev) => ({
       ...prev,
       token: null,
@@ -52,20 +59,22 @@ export function useChatSession(params: UseChatSessionParams) {
       isAuthenticating: false,
       authFailed: false,
     }));
-  }, []);
+  }, [bot_id]);
 
   const ensureSession = useCallback((): Promise<void> => {
     if (typeof window === "undefined") return Promise.resolve();
     if (authenticationRef.current) return authenticationRef.current;
+    const keys = sessionStorageKeys(bot_id);
 
     const authenticate = async () => {
-      const existingConversationId = localStorage.getItem(
-        STORAGE_CONVERSATION_ID_KEY,
-      );
-      const existingToken = localStorage.getItem(STORAGE_TOKEN_KEY);
+      const existingConversationId = localStorage.getItem(keys.conversationId);
+      const existingToken = localStorage.getItem(keys.token);
       const tokenExpired = existingToken ? isJwtExpired(existingToken) : true;
 
       if (existingConversationId && existingToken && !tokenExpired) {
+        if (!localStorage.getItem(keys.visitor)) {
+          localStorage.setItem(keys.visitor, crypto.randomUUID());
+        }
         setState((prev) => ({
           ...prev,
           conversationId: existingConversationId,
@@ -78,7 +87,7 @@ export function useChatSession(params: UseChatSessionParams) {
 
       // If token is expired/invalid, remove it so we don't try to reuse it.
       if (tokenExpired) {
-        localStorage.removeItem(STORAGE_TOKEN_KEY);
+        localStorage.removeItem(keys.token);
       }
 
       setState((prev) => ({
@@ -88,11 +97,11 @@ export function useChatSession(params: UseChatSessionParams) {
       }));
       try {
         const data = await verifyChat({ api_key });
-        localStorage.setItem(STORAGE_CONVERSATION_ID_KEY, data.conversation_id);
-        localStorage.setItem(STORAGE_TOKEN_KEY, data.token);
-        localStorage.setItem(BOT_CONFIG_KEY, JSON.stringify(data.bot_config));
-        if (!localStorage.getItem(`${bot_id}:visitor_id`)) {
-          localStorage.setItem(`${bot_id}:visitor_id`, crypto.randomUUID());
+        localStorage.setItem(keys.conversationId, data.conversation_id);
+        localStorage.setItem(keys.token, data.token);
+        localStorage.setItem(keys.botConfig, JSON.stringify(data.bot_config));
+        if (!localStorage.getItem(keys.visitor)) {
+          localStorage.setItem(keys.visitor, crypto.randomUUID());
         }
         setState((prev) => ({
           ...prev,

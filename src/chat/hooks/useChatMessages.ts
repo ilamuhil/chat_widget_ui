@@ -131,27 +131,20 @@ export function useChatMessages(props: {
         //3 types of message are sent to the server : file message indicating that a file has been uploaded to the server.
         //form capture message indicating that the user has filled the form details.
         //ordinary text messages indicating that the user has sent a message to the assistant.
-        if (content instanceof String) {
+        let payload: string;
+        if (typeof content === "string") {
           type = "message";
-        } else if (typeof content === "object" && "file_key" in content) {
+          payload = content;
+        } else if ("file_key" in content) {
           type = "file";
-          content = (content as FileMessage).file_key;
-        } else if (
-          typeof content === "object" &&
-          "name" in content &&
-          "email" in content &&
-          "phone" in content
-        ) {
+          payload = content.file_key;
+        } else {
           type = "form_capture";
+          payload = `${content.name}:${content.email}:${content.phone}`;
         }
         sender.sendJsonMessage({
           type,
-          content:
-            type === "form_capture"
-              ? `${(content as FormCaptureData).name}:${(content as FormCaptureData).email}:${(content as FormCaptureData).phone}`
-              : type === "file"
-                ? (content as FileMessage).file_key
-                : (content as string),
+          content: payload,
         });
         toggleFormVisibility();
         playBopSound();
