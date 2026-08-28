@@ -28,7 +28,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
   const formData = new FormData();
   formData.append("file", file);
-  const token = sessionStorage.getItem("token");
+  const token = localStorage.getItem("token");
   if (!token) throw new Error("Unauthorized");
   const response = await fetch(`${API_URL_BASE}/api/conversations/upload`, {
     headers: {

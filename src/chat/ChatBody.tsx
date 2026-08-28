@@ -11,9 +11,6 @@ const markdown = new Marked({
 });
 
 function normalizeDefinitionLists(source: string) {
-  // Support the Pandoc-style syntax commonly emitted by LLMs:
-  // Term
-  // : Definition
   return source.replace(
     /^([^\n]+)\n: ([^\n]+)(?=\n|$)/gm,
     "<dl><dt>$1</dt><dd>$2</dd></dl>",
@@ -21,7 +18,7 @@ function normalizeDefinitionLists(source: string) {
 }
 
 function isThematicBreakMessage(source: string) {
-  return /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(source)
+  return /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(source);
 }
 
 function openExternalLinksInNewTab(html: string) {
@@ -85,19 +82,21 @@ export default function ChatBody(props: {
           return (
             <div
               key={`${message.timestamp}-${idx}`}
-              className='my-2 flex items-center px-3'
-              role='separator'
-              aria-hidden='true'>
-              <hr className='chat-message-separator' />
+              className="my-2 flex items-center px-3"
+              role="separator"
+              aria-hidden="true"
+            >
+              <hr className="chat-message-separator" />
             </div>
-          )
+          );
         }
 
-        const prev = idx > 0 ? messagesMeta[idx - 1] : undefined
-        const next = idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined
-        const normalized = normalizeDefinitionLists(message.content)
-        const rendered = markdown.parse(normalized, { async: false })
-        const renderedHtml = typeof rendered === 'string' ? rendered : ''
+        const prev = idx > 0 ? messagesMeta[idx - 1] : undefined;
+        const next =
+          idx < messagesMeta.length - 1 ? messagesMeta[idx + 1] : undefined;
+        const normalized = normalizeDefinitionLists(message.content);
+        const rendered = markdown.parse(normalized, { async: false });
+        const renderedHtml = typeof rendered === "string" ? rendered : "";
         const sanitizedHtml = DOMPurify.sanitize(
           renderedHtml
             .replaceAll("<table>", '<div class="chat-table-wrap"><table>')

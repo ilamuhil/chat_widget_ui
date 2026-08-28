@@ -12,7 +12,6 @@ export type BotConfig = {
 
 export type VerificationRequest = {
   api_key: string;
-  bot_id: string;
 };
 
 export type VerificationResponse = {
@@ -23,7 +22,6 @@ export type VerificationResponse = {
 
 export async function verifyChat({
   api_key,
-  bot_id,
 }: VerificationRequest): Promise<VerificationResponse> {
   const API_URL_BASE = import.meta.env.VITE_API_URL_BASE as string | undefined;
   if (!API_URL_BASE) {
@@ -36,7 +34,6 @@ export async function verifyChat({
     },
     body: JSON.stringify({
       api_key,
-      bot_id,
     }),
   });
 
