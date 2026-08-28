@@ -7,21 +7,36 @@
 /* Soft header wash across bot identity + support meta */
 .chat-panel-header {
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(56, 189, 248, 0.16), transparent 55%),
-    radial-gradient(90% 80% at 100% 10%, rgba(148, 163, 184, 0.18), transparent 50%),
+    radial-gradient(
+      120% 90% at 0% 0%,
+      rgba(56, 189, 248, 0.16),
+      transparent 55%
+    ),
+    radial-gradient(
+      90% 80% at 100% 10%,
+      rgba(148, 163, 184, 0.18),
+      transparent 50%
+    ),
     linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .chat-panel-body {
   background:
-    radial-gradient(80% 50% at 100% 0%, rgba(56, 189, 248, 0.06), transparent 55%),
+    radial-gradient(
+      80% 50% at 100% 0%,
+      rgba(56, 189, 248, 0.06),
+      transparent 55%
+    ),
     linear-gradient(180deg, #f8fafc 0%, #ffffff 42%, #f8fafc 100%);
 }
 
 .chat-panel-composer {
-  background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.92) 0%, rgba(241, 245, 249, 0.96) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(248, 250, 252, 0.92) 0%,
+    rgba(241, 245, 249, 0.96) 100%
+  );
   border-top: 1px solid rgba(15, 23, 42, 0.06);
   backdrop-filter: blur(10px);
 }
@@ -30,14 +45,26 @@
 .chat-lead-capture {
   background:
     radial-gradient(90% 60% at 0% 0%, rgba(56, 189, 248, 0.1), transparent 55%),
-    radial-gradient(70% 50% at 100% 100%, rgba(148, 163, 184, 0.12), transparent 50%),
+    radial-gradient(
+      70% 50% at 100% 100%,
+      rgba(148, 163, 184, 0.12),
+      transparent 50%
+    ),
     linear-gradient(180deg, #f8fafc 0%, #ffffff 55%, #f1f5f9 100%);
 }
 
 .chat-lead-capture--fullscreen {
   background:
-    radial-gradient(70% 55% at 15% 0%, rgba(56, 189, 248, 0.14), transparent 60%),
-    radial-gradient(55% 45% at 85% 100%, rgba(148, 163, 184, 0.16), transparent 55%),
+    radial-gradient(
+      70% 55% at 15% 0%,
+      rgba(56, 189, 248, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(
+      55% 45% at 85% 100%,
+      rgba(148, 163, 184, 0.16),
+      transparent 55%
+    ),
     linear-gradient(180deg, #f8fafc 0%, #ffffff 48%, #eef2f7 100%);
 }
 
@@ -62,13 +89,21 @@
 }
 
 .chat-bubble-user {
-  background: linear-gradient(160deg, rgba(14, 165, 233, 0.92) 0%, rgba(2, 132, 199, 0.88) 100%);
+  background: linear-gradient(
+    160deg,
+    rgba(14, 165, 233, 0.92) 0%,
+    rgba(2, 132, 199, 0.88) 100%
+  );
   color: #fff;
   box-shadow: 0 1px 2px rgba(2, 132, 199, 0.18);
 }
 
 .chat-bubble-staff {
-  background: linear-gradient(180deg, rgba(241, 245, 249, 0.98) 0%, rgba(226, 232, 240, 0.96) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(241, 245, 249, 0.98) 0%,
+    rgba(226, 232, 240, 0.96) 100%
+  );
   color: #0f172a;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
@@ -123,12 +158,12 @@
   background-clip: border-box;
   border-bottom-right-radius: 0;
   -webkit-mask:
-    radial-gradient(100% 100% at 100% 0, transparent 99%, #000 102%)
-      100% calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    radial-gradient(100% 100% at 100% 0, transparent 99%, #000 102%) 100%
+      calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
     linear-gradient(#000 0 0) padding-box;
   mask:
-    radial-gradient(100% 100% at 100% 0, transparent 99%, #000 102%)
-      100% calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    radial-gradient(100% 100% at 100% 0, transparent 99%, #000 102%) 100%
+      calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
     linear-gradient(#000 0 0) padding-box;
 }
 
@@ -136,12 +171,12 @@
   background-clip: border-box;
   border-bottom-left-radius: 0;
   -webkit-mask:
-    radial-gradient(100% 100% at 0 0, transparent 99%, #000 102%)
-      0 calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    radial-gradient(100% 100% at 0 0, transparent 99%, #000 102%) 0
+      calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
     linear-gradient(#000 0 0) padding-box;
   mask:
-    radial-gradient(100% 100% at 0 0, transparent 99%, #000 102%)
-      0 calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
+    radial-gradient(100% 100% at 0 0, transparent 99%, #000 102%) 0
+      calc(100% - var(--s)) / var(--s) var(--s) no-repeat border-box,
     linear-gradient(#000 0 0) padding-box;
 }
 
