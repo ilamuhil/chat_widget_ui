@@ -1,7 +1,7 @@
 import ChatWidget from "./chat/ChatWidget";
 
-const api_key = "bot_pLqfknP_jTMqqtj9nHbFjjQJ";
-const bot_id = "ae3d7ead-ae41-406c-8700-34b966af7cf6";
+const api_key = "bot_BRZaGAHvCegp534U8-bL4KoF";
+const bot_id = "c983cec8-004a-4619-a8ab-8fd4439aaca3";
 
 type AppProps = {
   config?: Record<string, unknown>;
