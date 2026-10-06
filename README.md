@@ -57,7 +57,15 @@ pnpm build
 ## Configuration knobs
 
 - **Font**: `src/index.css` → `--chat-font`
-- **Branding banner**: `src/chat/ChatWidget.tsx` passes `showBranding`, `brandingHref`, `brandingLabel` into `ChatComposer`
+- **Theme**: pass `theme: "light"` or `theme: "dark"` with `api_key` and `bot_id`; omitted or invalid values default to light.
+
+```ts
+window.chatInject?.({
+  api_key: "your-api-key",
+  bot_id: "your-bot-id",
+  theme: "dark",
+});
+```
 
 ## Notes
 

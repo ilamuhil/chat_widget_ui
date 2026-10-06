@@ -46,7 +46,7 @@ export default function FormCapture(props: {
         <div className="shrink-0">
           <p
             className={[
-              "font-semibold uppercase tracking-[0.08em] text-sky-700/70",
+              "chat-form-eyebrow font-semibold uppercase tracking-[0.08em]",
               layoutFullscreen ? "text-[11px]" : "text-[10px]",
             ].join(" ")}
           >
@@ -54,7 +54,7 @@ export default function FormCapture(props: {
           </p>
           <h2
             className={[
-              "font-semibold tracking-[-0.03em] leading-snug text-slate-900",
+              "chat-form-title font-semibold tracking-[-0.03em] leading-snug",
               layoutFullscreen ? "mt-1.5 text-[22px]" : "mt-0.5 text-[17px]",
             ].join(" ")}
           >
@@ -62,7 +62,7 @@ export default function FormCapture(props: {
           </h2>
           <p
             className={[
-              "leading-snug text-slate-600/80",
+              "chat-form-copy leading-snug",
               layoutFullscreen ? "mt-1.5 text-[13px]" : "mt-1 text-[11px]",
             ].join(" ")}
           >
@@ -86,7 +86,7 @@ export default function FormCapture(props: {
           >
             <label
               className={[
-                "font-medium tracking-[-0.01em] text-slate-600",
+                "chat-form-label font-medium tracking-[-0.01em]",
                 layoutFullscreen ? "text-[11px]" : "text-[10px]",
               ].join(" ")}
               htmlFor="capture-name"
@@ -96,7 +96,7 @@ export default function FormCapture(props: {
             <input
               id="capture-name"
               className={[
-                "chat-lead-input w-full rounded-lg border border-slate-200/90 bg-white text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100",
+                "chat-lead-input chat-form-input w-full rounded-lg border text-[13px] outline-none transition",
                 layoutFullscreen ? "h-10 px-3.5" : "h-9 px-3",
               ].join(" ")}
               type="text"
@@ -117,7 +117,7 @@ export default function FormCapture(props: {
           >
             <label
               className={[
-                "font-medium tracking-[-0.01em] text-slate-600",
+                "chat-form-label font-medium tracking-[-0.01em]",
                 layoutFullscreen ? "text-[11px]" : "text-[10px]",
               ].join(" ")}
               htmlFor="capture-email"
@@ -127,7 +127,7 @@ export default function FormCapture(props: {
             <input
               id="capture-email"
               className={[
-                "chat-lead-input w-full rounded-lg border border-slate-200/90 bg-white text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100",
+                "chat-lead-input chat-form-input w-full rounded-lg border text-[13px] outline-none transition",
                 layoutFullscreen ? "h-10 px-3.5" : "h-9 px-3",
               ].join(" ")}
               type="email"
@@ -148,7 +148,7 @@ export default function FormCapture(props: {
           >
             <label
               className={[
-                "font-medium tracking-[-0.01em] text-slate-600",
+                "chat-form-label font-medium tracking-[-0.01em]",
                 layoutFullscreen ? "text-[11px]" : "text-[10px]",
               ].join(" ")}
               htmlFor="capture-phone"
@@ -158,7 +158,7 @@ export default function FormCapture(props: {
             <input
               id="capture-phone"
               className={[
-                "chat-lead-input w-full rounded-lg border border-slate-200/90 bg-white text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:ring-2 focus:ring-sky-100",
+                "chat-lead-input chat-form-input w-full rounded-lg border text-[13px] outline-none transition",
                 layoutFullscreen ? "h-10 px-3.5" : "h-9 px-3",
               ].join(" ")}
               type="tel"
@@ -175,7 +175,7 @@ export default function FormCapture(props: {
 
         <button
           className={[
-            "w-full shrink-0 rounded-lg bg-sky-600 font-semibold tracking-[-0.01em] text-white transition hover:bg-sky-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
+            "chat-primary-button w-full shrink-0 rounded-lg font-semibold tracking-[-0.01em] transition active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
             layoutFullscreen
               ? "mt-5 h-10 text-[13px] shadow-[0_8px_20px_rgba(2,132,199,0.28)]"
               : "mt-2 h-9 text-[12px] shadow-[0_6px_16px_rgba(2,132,199,0.24)]",

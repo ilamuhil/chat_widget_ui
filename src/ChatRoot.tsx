@@ -1,10 +1,11 @@
 import { createRoot } from "react-dom/client";
 import { StrictMode } from "react";
 import App from "./App";
+import type { ChatWidgetConfigInput } from "./widgetConfig";
 
 export function mountWidget(
   div: HTMLElement,
-  chatConfig: Record<string, unknown>,
+  chatConfig: ChatWidgetConfigInput,
 ) {
   console.log("running from chat root");
   createRoot(div).render(

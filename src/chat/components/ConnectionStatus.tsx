@@ -14,6 +14,8 @@ export function ConnectionStatus(props: {
       timeout = window.setTimeout(() => {
         setShowConnectionStatus(false);
       }, 1000);
+    } else {
+      setShowConnectionStatus(true);
     }
 
     return () => {
@@ -24,32 +26,32 @@ export function ConnectionStatus(props: {
   const view = authFailed
     ? {
         label: "Connection failed",
-        colorClass: "text-rose-600",
-        dotClass: "bg-rose-500/70",
+        colorClass: "chat-connection-status--error",
+        dotClass: "chat-status-dot--error",
       }
     : readyState === "open"
       ? {
           label: "Connected",
-          colorClass: "text-emerald-600",
-          dotClass: "bg-emerald-500/70",
+          colorClass: "chat-connection-status--success",
+          dotClass: "chat-status-dot--success",
         }
       : isAuthenticating ||
           readyState === "connecting" ||
           readyState === "closing"
         ? {
             label: "Connecting",
-            colorClass: "text-slate-500",
-            dotClass: "bg-slate-400/60",
+            colorClass: "chat-connection-status--neutral",
+            dotClass: "chat-status-dot--neutral",
           }
         : {
             label: "Disconnected",
-            colorClass: "text-slate-500",
-            dotClass: "bg-slate-400/60",
+            colorClass: "chat-connection-status--neutral",
+            dotClass: "chat-status-dot--neutral",
           };
 
   return (
     <div
-      className={`${showConnectionStatus ? "block" : "hidden"} flex items-center justify-center gap-1.5 rounded-t-lg bg-slate-900/5 p-1.5 text-xs ${view.colorClass} rise`}
+      className={`${showConnectionStatus ? "block" : "hidden"} chat-connection-status flex items-center justify-center gap-1.5 rounded-t-lg p-1.5 text-xs ${view.colorClass}`}
     >
       <span
         className={`h-1.5 w-1.5 animate-pulse rounded-full ${view.dotClass}`}

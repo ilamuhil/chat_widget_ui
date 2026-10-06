@@ -20,7 +20,13 @@ export type FileMessage = {
   file_key: string;
 };
 
-/** Matches server payload: `{ type, from, is_typing, conversation_id }`. */
+/** Counsellor search loader and its short result line. */
+export type ServerAssistanceEvent = {
+  type: "assistance";
+  status: "searching" | "connected" | "busy";
+  conversation_id: string;
+};
+
 export type ServerTypingEvent = {
   type: "typing";
   from: "system";

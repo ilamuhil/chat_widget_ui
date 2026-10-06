@@ -103,6 +103,11 @@ export function useChatSocket(params: UseChatSocketParams) {
     let cancelled = false;
     let attempt = 0;
 
+    if (!socketUrl) {
+      setReadyState("closed");
+      return;
+    }
+
     const connect = () => {
       if (cancelled || !socketUrl) return;
       manualCloseRef.current = false;
@@ -185,13 +190,19 @@ export function useChatSocket(params: UseChatSocketParams) {
         //!IMPORTANT: this runs after the disconnect function defined below.
         clearHeartbeat();
 
+        const isCurrent = socketRef.current === socket;
+        if (isCurrent) socketRef.current = null;
+
+        // A replacement socket already owns the connection state. A close
+        // from the socket we just superseded must not mark that one closed.
+        if (!isCurrent) return;
+
         const permanentFailure = event.code === 1008 || event.code === 1003;
-        if (socketRef.current === socket) {
-          socketRef.current = null;
-        }
+        // 1000 is a finished conversation (end chat), not a dropped network.
+        const intentionalClose = event.code === 1000;
 
         // Policy / protocol rejection — retrying only storms the server.
-        if (cancelled || permanentFailure) {
+        if (cancelled || permanentFailure || intentionalClose) {
           setReadyState("closed");
           if (permanentFailure) onCloseRef.current?.();
           return;
@@ -238,6 +249,7 @@ export function useChatSocket(params: UseChatSocketParams) {
       retryTimerRef.current = undefined;
     }
     manualCloseRef.current = true;
+    pendingMessagesRef.current = [];
     const socket = socketRef.current;
     if (!socket) {
       setReadyState("closed");

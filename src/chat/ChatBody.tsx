@@ -148,12 +148,12 @@ export default function ChatBody(props: {
                 ].join(" ")}
               >
                 {showAvatar && (
-                  <div className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold tracking-[-0.02em] text-slate-600 ring-1 ring-slate-900/8 shadow-sm">
+                  <div className="chat-message-avatar inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold tracking-[-0.02em] ring-1">
                     {message.initials}
                   </div>
                 )}
                 {showTimestamp && (
-                  <div className="select-none text-[9px] italic leading-none text-slate-500/70">
+                  <div className="chat-message-time select-none text-[9px] italic leading-none">
                     {timeText}
                   </div>
                 )}

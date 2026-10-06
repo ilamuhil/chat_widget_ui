@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   Role,
   ServerMessageEvent,
+  ServerAssistanceEvent,
   ServerTypingEvent,
   ServerFormCapturedEvent,
   FileMessage,
@@ -14,6 +15,11 @@ import type { SocketReadyState } from "./useChatSocket";
 
 /** Failsafe — typing must not linger if nothing clears it. */
 const TYPING_FAILSAFE_MS = 45_000;
+/** Slightly past the server handover timeout so a missed result cannot stick. */
+const ASSISTANCE_FAILSAFE_MS = 200_000;
+const ASSISTANCE_NOTICE_MS = 2_500;
+
+type AssistancePhase = "searching" | "connected" | "busy" | null;
 
 type Sender = {
   readyState: SocketReadyState;
@@ -59,11 +65,16 @@ export function useChatMessages(props: {
   const { toggleFormVisibility } = props;
   const [messages, setMessages] = useState<Array<ChatMessage>>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [assistancePhase, setAssistancePhase] = useState<AssistancePhase>(null);
+  const assistancePhaseRef = useRef<AssistancePhase>(null);
   const [isSupportAgentConnected, setIsSupportAgentConnected] = useState(false);
   const senderRef = useRef<Sender | null>(null);
   const typingFailsafeRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
+  const assistanceFailsafeRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
 
   const setSender = useCallback((sender: Sender | null) => {
     senderRef.current = sender;
@@ -80,6 +91,46 @@ export function useChatMessages(props: {
     clearTypingFailsafe();
     setIsTyping(false);
   }, [clearTypingFailsafe]);
+
+  const clearAssistanceFailsafe = useCallback(() => {
+    if (assistanceFailsafeRef.current) {
+      clearTimeout(assistanceFailsafeRef.current);
+      assistanceFailsafeRef.current = undefined;
+    }
+  }, []);
+
+  const setPhase = useCallback((phase: AssistancePhase) => {
+    assistancePhaseRef.current = phase;
+    setAssistancePhase(phase);
+  }, []);
+
+  const clearAssistance = useCallback(() => {
+    clearAssistanceFailsafe();
+    setPhase(null);
+  }, [clearAssistanceFailsafe, setPhase]);
+
+  const showAssistanceResult = useCallback(
+    (phase: "connected" | "busy") => {
+      setPhase(phase);
+      clearTyping();
+      clearAssistanceFailsafe();
+      assistanceFailsafeRef.current = setTimeout(() => {
+        assistanceFailsafeRef.current = undefined;
+        setPhase(null);
+      }, ASSISTANCE_NOTICE_MS);
+    },
+    [clearAssistanceFailsafe, clearTyping, setPhase],
+  );
+
+  const startAssistanceSearch = useCallback(() => {
+    setPhase("searching");
+    clearTyping();
+    clearAssistanceFailsafe();
+    assistanceFailsafeRef.current = setTimeout(() => {
+      assistanceFailsafeRef.current = undefined;
+      setPhase(null);
+    }, ASSISTANCE_FAILSAFE_MS);
+  }, [clearAssistanceFailsafe, clearTyping, setPhase]);
 
   /**
    * Typing is server-driven via `typing` events. Do not call this (or
@@ -99,14 +150,16 @@ export function useChatMessages(props: {
   const clearMessages = useCallback(() => {
     setMessages([]);
     clearTyping();
+    clearAssistance();
     setIsSupportAgentConnected(false);
-  }, [clearTyping]);
+  }, [clearAssistance, clearTyping]);
 
   useEffect(() => {
     return () => {
       clearTypingFailsafe();
+      clearAssistanceFailsafe();
     };
-  }, [clearTypingFailsafe]);
+  }, [clearAssistanceFailsafe, clearTypingFailsafe]);
 
   const resolveDisplayRole = useCallback(
     (role: unknown): Role => {
@@ -172,6 +225,16 @@ export function useChatMessages(props: {
       if (typeof payload !== "object" || payload === null) return;
       const obj = payload as Record<string, unknown>;
 
+      // Counsellor search is a system event — never a chat bubble.
+      if (obj.type === "assistance" && typeof obj.status === "string") {
+        const ev = obj as ServerAssistanceEvent;
+        if (ev.status === "searching") startAssistanceSearch();
+        else if (ev.status === "connected" || ev.status === "busy") {
+          showAssistanceResult(ev.status);
+        }
+        return;
+      }
+
       // Typing is a system event — never a chat bubble.
       // Server shape: { type: "typing", from: "system", is_typing, conversation_id }
       if (obj.type === "typing") {
@@ -215,6 +278,9 @@ export function useChatMessages(props: {
       const role = resolveDisplayRole(ev.role);
       if (role === "support_agent") {
         setIsSupportAgentConnected(true);
+        if (assistancePhaseRef.current === "searching") {
+          showAssistanceResult("connected");
+        }
       }
 
       setMessages((prev) => [
@@ -231,12 +297,22 @@ export function useChatMessages(props: {
       ]);
       clearTyping();
     },
-    [toggleFormVisibility, clearTyping, enableTyping, resolveDisplayRole],
+    [
+      toggleFormVisibility,
+      clearAssistance,
+      clearTyping,
+      enableTyping,
+      resolveDisplayRole,
+      showAssistanceResult,
+      startAssistanceSearch,
+    ],
   );
 
   return {
     messages,
     isTyping,
+    assistancePhase,
+    isSupportAgentConnected,
     appendUserMessage,
     clearMessages,
     handleServerJson,

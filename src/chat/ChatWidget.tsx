@@ -5,6 +5,8 @@ import useIsMobile from "../hooks/useIsMobile";
 import ChatBody from "./ChatBody";
 import ChatComposer from "./ChatComposer";
 import TypingIndicator from "./TypingIndicator";
+import ThinkingIndicator from "./ThinkingIndicator";
+import AssistanceNotice from "./AssistanceNotice";
 import "./styles/custom.css";
 import { useChatSession } from "./hooks/useChatSession";
 import { useChatSocket } from "./hooks/useChatSocket";
@@ -16,6 +18,7 @@ import {
   type ServerErrorEvent,
 } from "./types";
 import { InfoBanner, type BannerMessage } from "./components/InfoBanner";
+import type { ChatTheme } from "../widgetConfig";
 
 const MOBILE_MAX_WIDTH_PX = 768;
 const CLOSE_ANIMATION_MS = 320;
@@ -30,6 +33,7 @@ const FORM_CAPTURED_VALUE = "captured";
 type WidgetProps = {
   api_key: string;
   bot_id: string;
+  theme: ChatTheme;
 };
 
 export default function ChatWidget(props: WidgetProps) {
@@ -81,6 +85,8 @@ export default function ChatWidget(props: WidgetProps) {
   const {
     messages,
     isTyping,
+    assistancePhase,
+    isSupportAgentConnected,
     appendUserMessage,
     clearMessages,
     handleServerJson,
@@ -90,7 +96,7 @@ export default function ChatWidget(props: WidgetProps) {
 
   // useChatSocket owns disconnect, so route it through a ref to keep the two
   // hooks independent of each other.
-  const disconnectRef = useRef<() => void>(() => { });
+  const disconnectRef = useRef<() => void>(() => {});
 
   const onServerMessage = useCallback(
     (payload: unknown) => {
@@ -100,10 +106,23 @@ export default function ChatWidget(props: WidgetProps) {
           : undefined;
 
       if (type === "end_chat") {
+        const endedConversationId =
+          payload && typeof payload === "object"
+            ? (payload as { conversation_id?: unknown }).conversation_id
+            : undefined;
+        // A close frame from the previous conversation can arrive after reconnect.
+        if (
+          typeof endedConversationId === "string" &&
+          conversationId &&
+          endedConversationId !== conversationId
+        ) {
+          return;
+        }
         disconnectRef.current();
         clearSession();
         clearMessages();
-        setBannerMessage((prev) => ({ ...prev, content: null }))
+        setBannerMessage((prev) => ({ ...prev, content: null }));
+        setIsChatEnded(true);
         return;
       }
 
@@ -124,7 +143,7 @@ export default function ChatWidget(props: WidgetProps) {
 
       handleServerJson(payload);
     },
-    [clearSession, clearMessages, clearTyping, handleServerJson],
+    [clearSession, clearMessages, clearTyping, conversationId, handleServerJson],
   );
 
   const { sendJsonMessage, readyState, disconnect } = useChatSocket({
@@ -150,6 +169,10 @@ export default function ChatWidget(props: WidgetProps) {
     if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
     endChatTimerRef.current = window.setTimeout(() => {
       sendJsonMessage({ type: "end_chat" });
+      // Tear down locally so Reconnect cannot reuse this closed conversation.
+      disconnectRef.current();
+      clearSession();
+      clearMessages();
       setIsEndingChat(false);
       clearTyping();
       endChatTimerRef.current = undefined;
@@ -200,7 +223,7 @@ export default function ChatWidget(props: WidgetProps) {
     const el = messagesEndRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, isTyping]);
+  }, [messages, isTyping, assistancePhase]);
 
   const handleFormSubmit = () => {
     const [normalizedEmail, normalizedPhone, normalizedName] = [
@@ -209,6 +232,13 @@ export default function ChatWidget(props: WidgetProps) {
       name.trim(),
     ];
     if (!normalizedEmail || !normalizedPhone || !normalizedName) return;
+    if (readyState !== "open") {
+      setBannerMessage({
+        content: "Still connecting. Wait a moment, then submit the form again.",
+        variant: "warning",
+      });
+      return;
+    }
     appendUserMessage(
       { email: normalizedEmail, phone: normalizedPhone, name: normalizedName },
       true,
@@ -217,7 +247,8 @@ export default function ChatWidget(props: WidgetProps) {
 
   return (
     <div
-      className="fixed pointer-events-none"
+      className="chat-widget-theme fixed pointer-events-none"
+      data-theme={props.theme}
       style={{
         right: "var(--chat-offset-right)",
         bottom: "var(--chat-offset-bottom)",
@@ -227,8 +258,7 @@ export default function ChatWidget(props: WidgetProps) {
       <button
         id="chat-bubble"
         className={
-          "pointer-events-auto grid place-items-center rounded-full bg-white active:translate-y-px " +
-          "shadow-[0_10px_25px_rgba(15,23,42,0.18)] hover:shadow-[0_14px_34px_rgba(15,23,42,0.22)]" +
+          "chat-launcher pointer-events-auto grid place-items-center rounded-full active:translate-y-px " +
           (isMobile && isOpen ? " hidden" : "")
         }
         type="button"
@@ -255,7 +285,7 @@ export default function ChatWidget(props: WidgetProps) {
       <div
         id="chat-bubble-content"
         className={
-          "chat-font bg-white overflow-hidden flex flex-col transition-all duration-300 antialiased " +
+          "chat-font chat-widget-shell overflow-hidden flex flex-col transition-all duration-300 antialiased " +
           (layoutFullscreen
             ? "fixed origin-center rounded-none"
             : "absolute right-0 rounded-2xl origin-bottom-right") +
@@ -267,20 +297,20 @@ export default function ChatWidget(props: WidgetProps) {
         style={
           layoutFullscreen
             ? {
-              top: "var(--chat-fullscreen-top)",
-              right: "var(--chat-fullscreen-right)",
-              bottom: "var(--chat-fullscreen-bottom)",
-              left: "var(--chat-fullscreen-left)",
-              borderRadius: "var(--chat-fullscreen-radius)",
-              boxShadow: "0 24px 80px rgba(15, 23, 42, 0.35)",
-            }
+                top: "var(--chat-fullscreen-top)",
+                right: "var(--chat-fullscreen-right)",
+                bottom: "var(--chat-fullscreen-bottom)",
+                left: "var(--chat-fullscreen-left)",
+                borderRadius: "var(--chat-fullscreen-radius)",
+                boxShadow: "var(--chat-shadow-fullscreen)",
+              }
             : {
-              bottom: "calc(var(--chat-bubble-size) + var(--chat-gap))",
-              width: "min(var(--chat-panel-width), calc(100vw - 2rem))",
-              height:
-                "min(var(--chat-panel-height), calc(100vh - var(--chat-panel-viewport-margin)))",
-              boxShadow: "0 18px 50px rgba(15, 23, 42, 0.25)",
-            }
+                bottom: "calc(var(--chat-bubble-size) + var(--chat-gap))",
+                width: "min(var(--chat-panel-width), calc(100vw - 2rem))",
+                height:
+                  "min(var(--chat-panel-height), calc(100vh - var(--chat-panel-viewport-margin)))",
+                boxShadow: "var(--chat-shadow-panel)",
+              }
         }
         role="dialog"
       >
@@ -293,30 +323,30 @@ export default function ChatWidget(props: WidgetProps) {
           <div className="flex items-center gap-3 px-3.5 pt-3.5 pb-2.5">
             <div className="relative flex-none">
               <img
-                className="h-11 w-11 rounded-full object-cover ring-2 ring-white/90 shadow-[0_2px_8px_rgba(15,23,42,0.12)] bg-white"
+                className="chat-header-avatar h-11 w-11 rounded-full object-cover ring-2"
                 src={ChatImage}
                 alt=""
               />
               <span
                 className={[
-                  "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-white",
-                  isOnline ? "bg-emerald-500" : "bg-slate-400",
+                  "chat-presence-dot absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2",
+                  isOnline ? "chat-presence-dot--online" : "",
                 ].join(" ")}
                 aria-hidden="true"
               />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-semibold tracking-[-0.01em] leading-tight text-slate-900">
+              <div className="chat-text-primary truncate text-[15px] font-semibold tracking-[-0.01em] leading-tight">
                 {BOT_NAME}
               </div>
-              <div className="mt-0.5 text-[11px] leading-tight text-slate-600/80">
+              <div className="chat-text-muted mt-0.5 text-[11px] leading-tight">
                 {isOnline ? "Online now" : "Offline"}
               </div>
             </div>
 
             <div className="inline-flex flex-none items-center gap-1">
               <a
-                className="pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full bg-white/55 text-slate-700/80 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-900 active:translate-y-px"
+                className="chat-icon-button pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm active:translate-y-px"
                 href={SUPPORT_EMAIL_HREF}
                 aria-label="Email support"
               >
@@ -325,7 +355,7 @@ export default function ChatWidget(props: WidgetProps) {
 
               {!isMobile && (
                 <button
-                  className="pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full bg-white/55 text-slate-700/80 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-900 active:translate-y-px"
+                  className="chat-icon-button pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm active:translate-y-px"
                   type="button"
                   aria-label={
                     isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
@@ -337,7 +367,7 @@ export default function ChatWidget(props: WidgetProps) {
               )}
 
               <button
-                className="pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full bg-white/55 text-slate-700/80 shadow-sm backdrop-blur-sm hover:bg-white/90 hover:text-slate-900 active:translate-y-px"
+                className="chat-icon-button pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm active:translate-y-px"
                 type="button"
                 aria-label="Close chat"
                 onClick={closeChat}
@@ -349,10 +379,10 @@ export default function ChatWidget(props: WidgetProps) {
 
           <div className="flex items-center justify-between gap-3 px-3.5 pb-3 pt-1">
             <div className="min-w-0">
-              <div className="truncate text-xs font-semibold tracking-[-0.01em] text-slate-800/90">
+              <div className="chat-text-primary truncate text-xs font-semibold tracking-[-0.01em]">
                 {SUPPORT_TITLE}
               </div>
-              <div className="mt-0.5 text-[11px] leading-tight text-slate-600/70">
+              <div className="chat-text-muted mt-0.5 text-[11px] leading-tight">
                 {SUPPORT_META}
               </div>
             </div>
@@ -366,7 +396,7 @@ export default function ChatWidget(props: WidgetProps) {
         />
         {!showFormCapture && (
           <button
-            className="pointer-events-auto rounded-b-sm bg-slate-900/3 px-2.5 py-2 text-[10px] font-medium leading-none text-slate-900/60 hover:bg-slate-900/6 w-full hover:cursor-pointer disabled:cursor-wait disabled:opacity-60"
+            className="chat-end-button pointer-events-auto w-full rounded-b-sm px-2.5 py-2 text-[10px] font-medium leading-none hover:cursor-pointer disabled:cursor-wait disabled:opacity-60"
             type="button"
             aria-label="End chat"
             disabled={isEndingChat}
@@ -403,7 +433,23 @@ export default function ChatWidget(props: WidgetProps) {
               setName={setName}
             />
           </div>
-          {!showFormCapture && isTyping && <TypingIndicator />}
+          {!showFormCapture && assistancePhase === "searching" && (
+            <ThinkingIndicator label="Looking for assistance" />
+          )}
+          {!showFormCapture && assistancePhase === "connected" && (
+            <AssistanceNotice tone="success" label="An agent has connected" />
+          )}
+          {!showFormCapture && assistancePhase === "busy" && (
+            <AssistanceNotice tone="warning" label="All agents are busy" />
+          )}
+          {!showFormCapture &&
+            isTyping &&
+            assistancePhase === null &&
+            (isSupportAgentConnected ? (
+              <TypingIndicator />
+            ) : (
+              <ThinkingIndicator />
+            ))}
           {!showFormCapture && (
             <ConnectionStatus
               readyState={readyState}

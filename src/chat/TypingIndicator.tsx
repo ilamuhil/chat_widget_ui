@@ -9,9 +9,9 @@ export default function TypingIndicator() {
         } as React.CSSProperties
       }
     >
-      <div className="typing-dot typing-dot--1 h-1 w-1 rounded-full bg-slate-500/45"></div>
-      <div className="typing-dot typing-dot--2 h-1 w-1 rounded-full bg-slate-500/45"></div>
-      <div className="typing-dot typing-dot--3 h-1 w-1 rounded-full bg-slate-500/45"></div>
+      <div className="typing-dot typing-dot--1 h-1 w-1 rounded-full"></div>
+      <div className="typing-dot typing-dot--2 h-1 w-1 rounded-full"></div>
+      <div className="typing-dot typing-dot--3 h-1 w-1 rounded-full"></div>
     </div>
   );
 }

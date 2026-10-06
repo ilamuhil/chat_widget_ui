@@ -67,10 +67,10 @@ const handleFileUpload = async (
 };
 
 export default function ChatComposer(props: {
-  onSend: (message: string | { type: "file"; file_key: string }) => void
-  showFormCapture: boolean
-  onBannerMessage: (message: BannerMessage) => void
-  token: string | null
+  onSend: (message: string | { type: "file"; file_key: string }) => void;
+  showFormCapture: boolean;
+  onBannerMessage: (message: BannerMessage) => void;
+  token: string | null;
 }) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -124,8 +124,8 @@ export default function ChatComposer(props: {
 
   return (
     <div className="chat-panel-composer flex flex-col gap-1.5 p-2.5">
-      <div className="flex items-end gap-2 rounded-2xl border border-slate-200/70 bg-white/80 p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-        <label className="pointer-events-auto inline-grid h-9 w-9 cursor-pointer place-items-center rounded-full text-slate-600/80 hover:bg-slate-900/5 hover:text-slate-800">
+      <div className="chat-composer-control flex items-end gap-2 rounded-2xl border p-1.5">
+        <label className="chat-composer-icon pointer-events-auto inline-grid h-9 w-9 cursor-pointer place-items-center rounded-full">
           <input
             className="sr-only"
             type="file"
@@ -144,7 +144,7 @@ export default function ChatComposer(props: {
               : "Type a message…"
           }
           disabled={props.showFormCapture}
-          className="pointer-events-auto h-9 min-h-9 flex-1 resize-none rounded-xl bg-transparent px-2 py-2 text-[13px] leading-5 tracking-[-0.01em] text-slate-900 outline-none placeholder:text-[13px] placeholder:text-slate-400/90 disabled:opacity-60"
+          className="chat-composer-input pointer-events-auto h-9 min-h-9 flex-1 resize-none rounded-xl bg-transparent px-2 py-2 text-[13px] leading-5 tracking-[-0.01em] outline-none placeholder:text-[13px] disabled:opacity-60"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Type a message…"
@@ -162,7 +162,7 @@ export default function ChatComposer(props: {
         />
 
         <button
-          className="pointer-events-auto inline-grid h-9 w-9 place-items-center rounded-full bg-sky-600 text-white shadow-sm transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="chat-primary-button pointer-events-auto inline-grid h-9 w-9 place-items-center rounded-full shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40"
           type="button"
           disabled={!value.trim() || props.showFormCapture}
           aria-label="Send message"

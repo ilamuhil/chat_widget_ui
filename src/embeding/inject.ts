@@ -1,10 +1,12 @@
+import type { ChatWidgetConfigInput } from "../widgetConfig";
+
 declare global {
   interface Window {
-    chatInject?: (chatConfig: Record<string, unknown>) => void;
+    chatInject?: (chatConfig: ChatWidgetConfigInput) => void;
   }
 }
 
-function chatInject(chatConfig: Record<string, unknown>) {
+function chatInject(chatConfig: ChatWidgetConfigInput) {
   const div = document.createElement("div");
   div.id = "chat-widget-interface";
   document.body.appendChild(div);
