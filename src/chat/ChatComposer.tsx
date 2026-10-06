@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconPaperclip, IconSend } from "../assets/icons";
 import type { BannerMessage } from "./components/InfoBanner";
 import { Spinner } from "./components/Spinner";
+import { useTypingActivity } from "./hooks/useTypingActivity";
 
 //When the form is shown the text area and the send button will be disabled...
 
@@ -71,15 +72,18 @@ export default function ChatComposer(props: {
   showFormCapture: boolean;
   onBannerMessage: (message: BannerMessage) => void;
   token: string | null;
+  onTypingActivity?: (active: boolean) => boolean;
 }) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { noteTyping, stopTyping } = useTypingActivity(props.onTypingActivity);
 
   const [fileUploading, setFileUploading] = useState(false);
 
   const handleSend = () => {
     const text = value.trim();
     if (!text) return;
+    stopTyping();
     props.onSend(text);
     setValue("");
   };
@@ -146,7 +150,13 @@ export default function ChatComposer(props: {
           disabled={props.showFormCapture}
           className="chat-composer-input pointer-events-auto h-9 min-h-9 flex-1 resize-none rounded-xl bg-transparent px-2 py-2 text-[13px] leading-5 tracking-[-0.01em] outline-none placeholder:text-[13px] disabled:opacity-60"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setValue(next);
+            if (props.showFormCapture) return;
+            if (next.trim()) noteTyping();
+            else stopTyping();
+          }}
           placeholder="Type a message…"
           rows={1}
           style={{ maxHeight: "120px" }}

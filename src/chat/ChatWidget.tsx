@@ -85,6 +85,7 @@ export default function ChatWidget(props: WidgetProps) {
   const {
     messages,
     isTyping,
+    typingActor,
     assistancePhase,
     isSupportAgentConnected,
     appendUserMessage,
@@ -202,6 +203,15 @@ export default function ChatWidget(props: WidgetProps) {
 
   const handleSend = (content: string | FileMessage | FormCaptureData) =>
     appendUserMessage(content);
+
+  const reportTyping = useCallback(
+    (active: boolean) => {
+      if (readyState !== "open") return false;
+      sendJsonMessage({ type: "typing", is_typing: active });
+      return true;
+    },
+    [readyState, sendJsonMessage],
+  );
 
   useEffect(() => {
     if (isOpen || !closingFullscreen) return;
@@ -442,8 +452,12 @@ export default function ChatWidget(props: WidgetProps) {
           {!showFormCapture && assistancePhase === "busy" && (
             <AssistanceNotice tone="warning" label="All agents are busy" />
           )}
+          {!showFormCapture && isTyping && typingActor === "agent" && (
+            <TypingIndicator />
+          )}
           {!showFormCapture &&
             isTyping &&
+            typingActor !== "agent" &&
             assistancePhase === null &&
             (isSupportAgentConnected ? (
               <TypingIndicator />
@@ -464,6 +478,7 @@ export default function ChatWidget(props: WidgetProps) {
             onSend={handleSend}
             showFormCapture={showFormCapture}
             onBannerMessage={setBannerMessage}
+            onTypingActivity={reportTyping}
             token={token}
           />
         )}

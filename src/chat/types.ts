@@ -32,6 +32,8 @@ export type ServerTypingEvent = {
   from: "system";
   is_typing: boolean;
   conversation_id: string;
+  /** Set for keypress typing. Omitted while the AI is thinking. */
+  actor?: "user" | "support_agent";
 };
 
 export type ServerFormCapturedEvent = {

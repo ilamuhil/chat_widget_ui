@@ -15,11 +15,17 @@ import type { SocketReadyState } from "./useChatSocket";
 
 /** Failsafe — typing must not linger if nothing clears it. */
 const TYPING_FAILSAFE_MS = 45_000;
+/**
+ * Hold the indicator after typing stops so a short pause between keystrokes
+ * does not unmount it and restart the animation.
+ */
+const TYPING_HIDE_BUFFER_MS = 1_400;
 /** Slightly past the server handover timeout so a missed result cannot stick. */
 const ASSISTANCE_FAILSAFE_MS = 200_000;
 const ASSISTANCE_NOTICE_MS = 2_500;
 
 type AssistancePhase = "searching" | "connected" | "busy" | null;
+type TypingActor = "agent" | "assistant";
 
 type Sender = {
   readyState: SocketReadyState;
@@ -65,11 +71,15 @@ export function useChatMessages(props: {
   const { toggleFormVisibility } = props;
   const [messages, setMessages] = useState<Array<ChatMessage>>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [typingActor, setTypingActor] = useState<TypingActor>("assistant");
   const [assistancePhase, setAssistancePhase] = useState<AssistancePhase>(null);
   const assistancePhaseRef = useRef<AssistancePhase>(null);
   const [isSupportAgentConnected, setIsSupportAgentConnected] = useState(false);
   const senderRef = useRef<Sender | null>(null);
   const typingFailsafeRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const typingHideRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
   const assistanceFailsafeRef = useRef<
@@ -87,10 +97,27 @@ export function useChatMessages(props: {
     }
   }, []);
 
+  const clearTypingHide = useCallback(() => {
+    if (typingHideRef.current) {
+      clearTimeout(typingHideRef.current);
+      typingHideRef.current = undefined;
+    }
+  }, []);
+
   const clearTyping = useCallback(() => {
     clearTypingFailsafe();
+    clearTypingHide();
     setIsTyping(false);
-  }, [clearTypingFailsafe]);
+  }, [clearTypingFailsafe, clearTypingHide]);
+
+  const releaseTyping = useCallback(() => {
+    clearTypingHide();
+    typingHideRef.current = setTimeout(() => {
+      typingHideRef.current = undefined;
+      clearTypingFailsafe();
+      setIsTyping(false);
+    }, TYPING_HIDE_BUFFER_MS);
+  }, [clearTypingFailsafe, clearTypingHide]);
 
   const clearAssistanceFailsafe = useCallback(() => {
     if (assistanceFailsafeRef.current) {
@@ -138,14 +165,19 @@ export function useChatMessages(props: {
    * documented reason — and if you do, always clear via `clearTyping` so the
    * failsafe timer cannot leak.
    */
-  const enableTyping = useCallback(() => {
-    setIsTyping(true);
-    clearTypingFailsafe();
-    typingFailsafeRef.current = setTimeout(() => {
-      typingFailsafeRef.current = undefined;
-      setIsTyping(false);
-    }, TYPING_FAILSAFE_MS);
-  }, [clearTypingFailsafe]);
+  const enableTyping = useCallback(
+    (actor: TypingActor) => {
+      clearTypingHide();
+      setTypingActor(actor);
+      setIsTyping(true);
+      clearTypingFailsafe();
+      typingFailsafeRef.current = setTimeout(() => {
+        typingFailsafeRef.current = undefined;
+        setIsTyping(false);
+      }, TYPING_FAILSAFE_MS);
+    },
+    [clearTypingFailsafe, clearTypingHide],
+  );
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -157,9 +189,10 @@ export function useChatMessages(props: {
   useEffect(() => {
     return () => {
       clearTypingFailsafe();
+      clearTypingHide();
       clearAssistanceFailsafe();
     };
-  }, [clearAssistanceFailsafe, clearTypingFailsafe]);
+  }, [clearAssistanceFailsafe, clearTypingFailsafe, clearTypingHide]);
 
   const resolveDisplayRole = useCallback(
     (role: unknown): Role => {
@@ -240,8 +273,11 @@ export function useChatMessages(props: {
       if (obj.type === "typing") {
         if (obj.from === "system" && typeof obj.is_typing === "boolean") {
           const ev = obj as ServerTypingEvent;
-          if (ev.is_typing) enableTyping();
-          else clearTyping();
+          if (ev.is_typing) {
+            enableTyping(ev.actor === "support_agent" ? "agent" : "assistant");
+          } else {
+            releaseTyping();
+          }
         }
         return;
       }
@@ -302,6 +338,7 @@ export function useChatMessages(props: {
       clearAssistance,
       clearTyping,
       enableTyping,
+      releaseTyping,
       resolveDisplayRole,
       showAssistanceResult,
       startAssistanceSearch,
@@ -311,6 +348,7 @@ export function useChatMessages(props: {
   return {
     messages,
     isTyping,
+    typingActor,
     assistancePhase,
     isSupportAgentConnected,
     appendUserMessage,
