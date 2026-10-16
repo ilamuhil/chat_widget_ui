@@ -217,7 +217,7 @@ export function useChatMessages(props: {
         //3 types of message are sent to the server : file message indicating that a file has been uploaded to the server.
         //form capture message indicating that the user has filled the form details.
         //ordinary text messages indicating that the user has sent a message to the assistant.
-        let payload: string;
+        let payload: string | FormCaptureData;
         if (typeof content === "string") {
           type = "message";
           payload = content;
@@ -226,13 +226,14 @@ export function useChatMessages(props: {
           payload = content.file_key;
         } else {
           type = "form_capture";
-          payload = `${content.name}:${content.email}:${content.phone}`;
+          payload = content;
         }
         sender.sendJsonMessage({
+          request_id: crypto.randomUUID(),
           type,
           content: payload,
         });
-        toggleFormVisibility();
+        if (type !== "form_capture") toggleFormVisibility();
         playBopSound();
         // Typing indicator is owned by server `typing` events — do not enable here.
       }
@@ -335,7 +336,6 @@ export function useChatMessages(props: {
     },
     [
       toggleFormVisibility,
-      clearAssistance,
       clearTyping,
       enableTyping,
       releaseTyping,

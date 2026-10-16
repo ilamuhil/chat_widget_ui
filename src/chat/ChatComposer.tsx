@@ -68,24 +68,31 @@ const handleFileUpload = async (
 };
 
 export default function ChatComposer(props: {
-  onSend: (message: string | { type: "file"; file_key: string }) => void;
+  onSend: (
+    message: string | { type: "file"; file_key: string },
+  ) => Promise<boolean>;
   showFormCapture: boolean;
   onBannerMessage: (message: BannerMessage) => void;
   token: string | null;
   onTypingActivity?: (active: boolean) => boolean;
 }) {
   const [value, setValue] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { noteTyping, stopTyping } = useTypingActivity(props.onTypingActivity);
 
   const [fileUploading, setFileUploading] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = value.trim();
-    if (!text) return;
+    if (!text || isSending) return;
     stopTyping();
-    props.onSend(text);
-    setValue("");
+    setIsSending(true);
+    try {
+      if (await props.onSend(text)) setValue("");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const onFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +106,7 @@ export default function ChatComposer(props: {
         });
         return;
       }
-      props.onSend({
+      await props.onSend({
         type: "file",
         file_key: fileKey,
       });
@@ -133,7 +140,7 @@ export default function ChatComposer(props: {
           <input
             className="sr-only"
             type="file"
-            disabled={props.showFormCapture}
+            disabled={props.showFormCapture || !props.token}
             onChange={onFileChange}
           />
           <span aria-label="Add attachment">
@@ -174,7 +181,7 @@ export default function ChatComposer(props: {
         <button
           className="chat-primary-button pointer-events-auto inline-grid h-9 w-9 place-items-center rounded-full shadow-sm transition disabled:cursor-not-allowed disabled:opacity-40"
           type="button"
-          disabled={!value.trim() || props.showFormCapture}
+          disabled={!value.trim() || props.showFormCapture || isSending}
           aria-label="Send message"
           onClick={handleSend}
         >

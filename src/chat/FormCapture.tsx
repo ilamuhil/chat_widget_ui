@@ -3,22 +3,28 @@ export default function FormCapture(props: {
   email: string;
   phone: string;
   name: string;
+  consentToContact: boolean;
+  setConsentToContact: (consent: boolean) => void;
   setEmail: (email: string) => void;
   setPhone: (phone: string) => void;
   setName: (name: string) => void;
   layoutFullscreen?: boolean;
+  submitLabel?: string;
 }) {
   const {
     onFormSubmit,
     email,
     phone,
     name,
+    consentToContact,
+    setConsentToContact,
     setEmail,
     setPhone,
     setName,
     layoutFullscreen = false,
+    submitLabel = "Continue to chat",
   } = props;
-  const disableFormSubmit = !email.trim() || !phone.trim() || !name.trim();
+  const disableFormSubmit = !email.trim() || !name.trim();
 
   return (
     <div
@@ -153,7 +159,7 @@ export default function FormCapture(props: {
               ].join(" ")}
               htmlFor="capture-phone"
             >
-              Phone
+              Phone (optional)
             </label>
             <input
               id="capture-phone"
@@ -168,11 +174,27 @@ export default function FormCapture(props: {
               autoComplete="tel"
               inputMode="tel"
               placeholder="+1 (555) 000-0000"
-              required
+              pattern="[+0-9() .-]{10,25}"
             />
           </div>
         </div>
 
+        <label
+          className="chat-form-copy mt-3 flex shrink-0 items-start gap-2 text-[11px] leading-snug"
+          htmlFor="capture-consent"
+        >
+          <input
+            id="capture-consent"
+            type="checkbox"
+            checked={consentToContact}
+            onChange={(event) => setConsentToContact(event.target.checked)}
+            className="mt-0.5 shrink-0"
+          />
+          <span>
+            I agree to be contacted by email or phone about my enquiry
+            (optional).
+          </span>
+        </label>
         <button
           className={[
             "chat-primary-button w-full shrink-0 rounded-lg font-semibold tracking-[-0.01em] transition active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
@@ -183,7 +205,7 @@ export default function FormCapture(props: {
           disabled={disableFormSubmit}
           type="submit"
         >
-          Continue to chat
+          {submitLabel}
         </button>
       </form>
     </div>

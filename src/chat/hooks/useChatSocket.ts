@@ -104,8 +104,12 @@ export function useChatSocket(params: UseChatSocketParams) {
     let attempt = 0;
 
     if (!socketUrl) {
-      setReadyState("closed");
-      return;
+      queueMicrotask(() => {
+        if (!cancelled) setReadyState("closed");
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
     const connect = () => {
@@ -240,7 +244,7 @@ export function useChatSocket(params: UseChatSocketParams) {
         socket.close(1000, "Normal Closure");
       }
     };
-  }, [socketUrl, isOpen, clearHeartbeat]);
+  }, [socketUrl, isOpen, clearHeartbeat, bot_id]);
 
   const disconnect = useCallback(() => {
     clearHeartbeat();

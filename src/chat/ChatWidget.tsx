@@ -1,3 +1,4 @@
+import FormCapture from "./FormCapture";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ChatImage from "../assets/chat.png";
 import { IconClose, IconEmail, IconFullscreen } from "../assets/icons";
@@ -38,6 +39,8 @@ type WidgetProps = {
 
 export default function ChatWidget(props: WidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [aiUnavailable, setAiUnavailable] = useState<string | null>(null);
+  const [fallbackSaved, setFallbackSaved] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [closingFullscreen, setClosingFullscreen] = useState(false);
   const [bannerMessage, setBannerMessage] = useState<BannerMessage>({
@@ -46,6 +49,13 @@ export default function ChatWidget(props: WidgetProps) {
   });
   const [isEndingChat, setIsEndingChat] = useState(false);
   const [isChatEnded, setIsChatEnded] = useState(false);
+  const [readyConversationId, setReadyConversationId] = useState<string | null>(
+    null,
+  );
+  const [endChatRequested, setEndChatRequested] = useState(false);
+  const reconnectMessages = useRef<
+    Array<string | FileMessage | FormCaptureData>
+  >([]);
   const endChatTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -66,6 +76,9 @@ export default function ChatWidget(props: WidgetProps) {
     api_key: props.api_key,
     bot_id: props.bot_id,
   });
+
+  const conversationReady =
+    Boolean(conversationId) && readyConversationId === conversationId;
 
   const [showFormCapture, setShowFormCapture] = useState(
     () =>
@@ -106,6 +119,60 @@ export default function ChatWidget(props: WidgetProps) {
           ? (payload as { type?: unknown }).type
           : undefined;
 
+      if (type === "ai_unavailable") {
+        const event = payload as { message: string; code: string };
+        clearTyping();
+        if (
+          [
+            "temporarily_busy",
+            "rate_limited",
+            "request_pending",
+            "message_too_large",
+            "turn_budget",
+            "request_expired",
+          ].includes(event.code)
+        ) {
+          setBannerMessage({ content: event.message, variant: "info" });
+          return;
+        }
+        setAiUnavailable(event.message);
+        setFallbackSaved(false);
+        return;
+      }
+      if (
+        type === "assistance" &&
+        (payload as { status?: string }).status === "connected"
+      ) {
+        setAiUnavailable(null);
+      }
+      if (
+        type === "form_capture" &&
+        (payload as { fallback?: string }).fallback === "contact"
+      ) {
+        setFallbackSaved(true);
+        return;
+      }
+      if (type === "conversation_ready") {
+        const event = payload as { form_required: boolean };
+        setAiUnavailable(null);
+        setFallbackSaved(false);
+        setReadyConversationId(
+          (payload as { conversation_id: string }).conversation_id,
+        );
+        toggleFormVisibility(event.form_required);
+        return;
+      }
+      if (type === "end_chat_requested") {
+        if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
+        endChatTimerRef.current = undefined;
+        setIsEndingChat(false);
+        setEndChatRequested(true);
+        setBannerMessage({
+          content: "agent has been notified to end chat",
+          variant: "info",
+        });
+        return;
+      }
       if (type === "end_chat") {
         const endedConversationId =
           payload && typeof payload === "object"
@@ -119,17 +186,42 @@ export default function ChatWidget(props: WidgetProps) {
         ) {
           return;
         }
+        if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
+        endChatTimerRef.current = undefined;
+        setIsEndingChat(false);
         disconnectRef.current();
         clearSession();
         clearMessages();
         setBannerMessage((prev) => ({ ...prev, content: null }));
         setIsChatEnded(true);
+        setReadyConversationId(null);
+        setEndChatRequested(false);
+        setBannerMessage({
+          content: "Conversation ended. Send a message to start a new chat.",
+          variant: "info",
+        });
+        // A queued message can meet a closed session during socket reconnect.
+        // Keep that first message and authenticate a fresh conversation now.
+        if (reconnectMessages.current.length > 0) {
+          void ensureSession()
+            .then(() => setIsChatEnded(false))
+            .catch(() => {
+              setBannerMessage({
+                content:
+                  "Could not reconnect. Send your message again to retry.",
+                variant: "warning",
+              });
+            });
+        }
         return;
       }
 
       // Server errors surface in the banner instead of the message list so they
       // don't read like part of the conversation.
       if (type === "error") {
+        if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
+        endChatTimerRef.current = undefined;
+        setIsEndingChat(false);
         const message = (payload as ServerErrorEvent).message;
         setBannerMessage({
           content:
@@ -144,7 +236,15 @@ export default function ChatWidget(props: WidgetProps) {
 
       handleServerJson(payload);
     },
-    [clearSession, clearMessages, clearTyping, conversationId, handleServerJson],
+    [
+      clearSession,
+      clearMessages,
+      clearTyping,
+      conversationId,
+      ensureSession,
+      handleServerJson,
+      toggleFormVisibility,
+    ],
   );
 
   const { sendJsonMessage, readyState, disconnect } = useChatSocket({
@@ -165,19 +265,22 @@ export default function ChatWidget(props: WidgetProps) {
   }, [isOpen, readyState, sendJsonMessage, setSender]);
 
   const endChat = () => {
-    if (isEndingChat) return;
+    if (isEndingChat || endChatRequested || readyState !== "open") return;
     setIsEndingChat(true);
     if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
     endChatTimerRef.current = window.setTimeout(() => {
       sendJsonMessage({ type: "end_chat" });
-      // Tear down locally so Reconnect cannot reuse this closed conversation.
-      disconnectRef.current();
-      clearSession();
-      clearMessages();
-      setIsEndingChat(false);
-      clearTyping();
-      endChatTimerRef.current = undefined;
-      setIsChatEnded(true);
+      // An end request may be forwarded to a human agent. A timeout must
+      // not disconnect or discard a conversation the visitor cannot close.
+      endChatTimerRef.current = window.setTimeout(() => {
+        setIsEndingChat(false);
+        endChatTimerRef.current = undefined;
+        setBannerMessage({
+          content:
+            "The end-chat request could not be confirmed. Please try again.",
+          variant: "warning",
+        });
+      }, 15_000);
     }, END_CHAT_WAVE_MS);
   };
 
@@ -201,8 +304,45 @@ export default function ChatWidget(props: WidgetProps) {
     clearTyping();
   };
 
-  const handleSend = (content: string | FileMessage | FormCaptureData) =>
-    appendUserMessage(content);
+  const handleSend = async (
+    content: string | FileMessage | FormCaptureData,
+  ): Promise<boolean> => {
+    if (!isChatEnded && token && conversationReady && readyState === "open") {
+      appendUserMessage(content);
+      return true;
+    }
+    reconnectMessages.current.push(content);
+    try {
+      if (isChatEnded || !token) {
+        setReadyConversationId(null);
+        await ensureSession();
+        setIsChatEnded(false);
+        setEndChatRequested(false);
+      }
+      setBannerMessage({
+        content: "Connecting your conversation…",
+        variant: "info",
+      });
+      return true;
+    } catch {
+      reconnectMessages.current = reconnectMessages.current.filter(
+        (item) => item !== content,
+      );
+      setBannerMessage({
+        content: "Could not reconnect. Please try sending your message again.",
+        variant: "warning",
+      });
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (!conversationReady || readyState !== "open" || showFormCapture) return;
+    const pending = reconnectMessages.current.splice(0);
+    if (!pending.length) return;
+    setBannerMessage({ content: null, variant: "info" });
+    for (const content of pending) appendUserMessage(content);
+  }, [conversationReady, readyState, showFormCapture, appendUserMessage]);
 
   const reportTyping = useCallback(
     (active: boolean) => {
@@ -226,6 +366,7 @@ export default function ChatWidget(props: WidgetProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
+  const [consentToContact, setConsentToContact] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -241,7 +382,7 @@ export default function ChatWidget(props: WidgetProps) {
       phone.trim(),
       name.trim(),
     ];
-    if (!normalizedEmail || !normalizedPhone || !normalizedName) return;
+    if (!normalizedEmail || !normalizedName) return;
     if (readyState !== "open") {
       setBannerMessage({
         content: "Still connecting. Wait a moment, then submit the form again.",
@@ -250,7 +391,12 @@ export default function ChatWidget(props: WidgetProps) {
       return;
     }
     appendUserMessage(
-      { email: normalizedEmail, phone: normalizedPhone, name: normalizedName },
+      {
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        name: normalizedName,
+        consentToContact,
+      },
       true,
     );
   };
@@ -404,18 +550,18 @@ export default function ChatWidget(props: WidgetProps) {
             setBannerMessage((prev) => ({ ...prev, content: null }))
           }
         />
-        {!showFormCapture && (
+        {!showFormCapture && !isChatEnded && (
           <button
             className="chat-end-button pointer-events-auto w-full rounded-b-sm px-2.5 py-2 text-[10px] font-medium leading-none hover:cursor-pointer disabled:cursor-wait disabled:opacity-60"
             type="button"
             aria-label="End chat"
-            disabled={isEndingChat}
-            onClick={isChatEnded ? openChat : endChat}
+            disabled={isEndingChat || endChatRequested || readyState !== "open"}
+            onClick={endChat}
           >
-            {isEndingChat
-              ? "Ending…"
-              : isChatEnded
-                ? "Reconnect Chat"
+            {endChatRequested
+              ? "Agent notified"
+              : isEndingChat
+                ? "Requesting…"
                 : "End Chat"}
           </button>
         )}
@@ -425,23 +571,67 @@ export default function ChatWidget(props: WidgetProps) {
             className={
               "flex-1 min-h-0 overflow-x-hidden no-scrollbar " +
               (showFormCapture
-                ? "flex flex-col overflow-hidden"
+                ? "flex flex-col overflow-auto"
                 : "overflow-auto")
             }
             ref={messagesEndRef}
           >
-            <ChatBody
-              messages={messages}
-              showFormCapture={showFormCapture}
-              layoutFullscreen={layoutFullscreen}
-              onFormSubmit={handleFormSubmit}
-              email={email}
-              phone={phone}
-              name={name}
-              setEmail={setEmail}
-              setPhone={setPhone}
-              setName={setName}
-            />
+            {aiUnavailable ? (
+              <div className="p-4">
+                {fallbackSaved ? (
+                  <p
+                    role="status"
+                    className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800"
+                  >
+                    Your details have been saved. The institute can follow up
+                    according to your contact preference.
+                  </p>
+                ) : (
+                  <FormCapture
+                    onFormSubmit={() =>
+                      sendJsonMessage({
+                        type: "form_capture",
+                        fallback: "contact",
+                        content: { name, email, phone, consentToContact },
+                      })
+                    }
+                    name={name}
+                    email={email}
+                    phone={phone}
+                    consentToContact={consentToContact}
+                    setName={setName}
+                    setEmail={setEmail}
+                    setPhone={setPhone}
+                    setConsentToContact={setConsentToContact}
+                    submitLabel="Save my enquiry"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    sendJsonMessage({ type: "request_counsellor" })
+                  }
+                  className="chat-primary-button mt-4 w-full rounded-lg px-4 py-3 text-sm"
+                >
+                  Request a counsellor
+                </button>
+              </div>
+            ) : (
+              <ChatBody
+                messages={messages}
+                showFormCapture={showFormCapture}
+                layoutFullscreen={layoutFullscreen}
+                onFormSubmit={handleFormSubmit}
+                email={email}
+                phone={phone}
+                name={name}
+                consentToContact={consentToContact}
+                setConsentToContact={setConsentToContact}
+                setEmail={setEmail}
+                setPhone={setPhone}
+                setName={setName}
+              />
+            )}
           </div>
           {!showFormCapture && assistancePhase === "searching" && (
             <ThinkingIndicator label="Looking for assistance" />
@@ -473,7 +663,7 @@ export default function ChatWidget(props: WidgetProps) {
           )}
         </div>
 
-        {!showFormCapture && (
+        {!showFormCapture && !aiUnavailable && (
           <ChatComposer
             onSend={handleSend}
             showFormCapture={showFormCapture}

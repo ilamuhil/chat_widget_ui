@@ -9,14 +9,12 @@ export function ConnectionStatus(props: {
   const [showConnectionStatus, setShowConnectionStatus] = useState(true);
   const { readyState, isAuthenticating, authFailed } = props;
   useEffect(() => {
-    let timeout: number | undefined;
-    if (readyState === "open") {
-      timeout = window.setTimeout(() => {
-        setShowConnectionStatus(false);
-      }, 1000);
-    } else {
-      setShowConnectionStatus(true);
-    }
+    const timeout = window.setTimeout(
+      () => {
+        setShowConnectionStatus(readyState !== "open");
+      },
+      readyState === "open" ? 1000 : 0,
+    );
 
     return () => {
       if (timeout !== undefined) window.clearTimeout(timeout);
@@ -51,7 +49,7 @@ export function ConnectionStatus(props: {
 
   return (
     <div
-      className={`${showConnectionStatus ? "block" : "hidden"} chat-connection-status flex items-center justify-center gap-1.5 rounded-t-lg p-1.5 text-xs ${view.colorClass}`}
+      className={`${readyState !== "open" || showConnectionStatus ? "block" : "hidden"} chat-connection-status flex items-center justify-center gap-1.5 rounded-t-lg p-1.5 text-xs ${view.colorClass}`}
     >
       <span
         className={`h-1.5 w-1.5 animate-pulse rounded-full ${view.dotClass}`}

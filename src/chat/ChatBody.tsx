@@ -40,6 +40,8 @@ export default function ChatBody(props: {
   email: string;
   phone: string;
   name: string;
+  consentToContact: boolean;
+  setConsentToContact: (consent: boolean) => void;
   setEmail: (email: string) => void;
   setPhone: (phone: string) => void;
   setName: (name: string) => void;
@@ -55,6 +57,8 @@ export default function ChatBody(props: {
     setPhone,
     showFormCapture,
     name,
+    consentToContact,
+    setConsentToContact,
     setName,
     layoutFullscreen = false,
   } = props;
@@ -67,6 +71,8 @@ export default function ChatBody(props: {
         email={email}
         phone={phone}
         name={name}
+        consentToContact={consentToContact}
+        setConsentToContact={setConsentToContact}
         setEmail={setEmail}
         setPhone={setPhone}
         setName={setName}

@@ -11,6 +11,7 @@ export type ChatMessage = {
 };
 
 export type FormCaptureData = {
+  consentToContact: boolean;
   email: string;
   phone: string;
   name: string;
