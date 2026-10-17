@@ -8,6 +8,8 @@ export type ChatMessage = {
   contentType: string;
   timestamp: string;
   agentName?: string;
+  streamId?: string;
+  streaming?: boolean;
 };
 
 export type FormCaptureData = {

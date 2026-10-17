@@ -9,6 +9,7 @@ const callbacks = vi.hoisted(() => ({
   clearMessages: vi.fn(),
   handleServerJson: vi.fn(),
   clearTyping: vi.fn(),
+  abortStreams: vi.fn(),
   setSender: vi.fn(),
 }));
 vi.mock("../src/api/verify", () => ({ verifyChat: vi.fn() }));

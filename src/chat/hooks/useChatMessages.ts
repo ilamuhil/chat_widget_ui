@@ -179,6 +179,11 @@ export function useChatMessages(props: {
     [clearTypingFailsafe, clearTypingHide],
   );
 
+  const abortStreams = useCallback(() => {
+    setMessages((prev) => prev.filter((message) => !message.streaming));
+    clearTyping();
+  }, [clearTyping]);
+
   const clearMessages = useCallback(() => {
     setMessages([]);
     clearTyping();
@@ -230,6 +235,7 @@ export function useChatMessages(props: {
         }
         sender.sendJsonMessage({
           request_id: crypto.randomUUID(),
+          supports_streaming: true,
           type,
           content: payload,
         });
@@ -258,6 +264,27 @@ export function useChatMessages(props: {
 
       if (typeof payload !== "object" || payload === null) return;
       const obj = payload as Record<string, unknown>;
+
+      if (obj.type === "message_abort" && typeof obj.stream_id === "string") {
+        setMessages((prev) => prev.filter((message) => message.streamId !== obj.stream_id));
+        clearTyping();
+        return;
+      }
+      if (obj.type === "message_delta") {
+        if (typeof obj.stream_id !== "string" || typeof obj.delta !== "string" || !obj.delta) return;
+        const streamId = obj.stream_id;
+        const delta = obj.delta;
+        setMessages((prev) => {
+          const index = prev.findIndex((message) => message.streamId === streamId);
+          if (index >= 0) {
+            if (!prev[index].streaming) return prev;
+            return prev.map((message, i) => i === index ? { ...message, content: message.content + delta } : message);
+          }
+          return [...prev, { role: "ai", content: delta, contentType: "text", timestamp: formatTimestamp(new Date()), streamId, streaming: true }];
+        });
+        clearTyping();
+        return;
+      }
 
       // Counsellor search is a system event — never a chat bubble.
       if (obj.type === "assistance" && typeof obj.status === "string") {
@@ -320,18 +347,15 @@ export function useChatMessages(props: {
         }
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role,
-          content,
-          contentType: "text",
-          timestamp: formatTimestamp(new Date()),
-          ...(typeof ev.agentName === "string"
-            ? { agentName: ev.agentName }
-            : null),
-        } as ChatMessage,
-      ]);
+      const finalMessage: ChatMessage = {
+        role, content, contentType: "text", timestamp: formatTimestamp(new Date()),
+        ...(typeof ev.agentName === "string" ? { agentName: ev.agentName } : {}),
+        ...(typeof obj.stream_id === "string" ? { streamId: obj.stream_id, streaming: false } : {}),
+      };
+      setMessages((prev) => {
+        const index = finalMessage.streamId ? prev.findIndex((message) => message.streamId === finalMessage.streamId) : -1;
+        return index < 0 ? [...prev, finalMessage] : prev.map((message, i) => i === index ? finalMessage : message);
+      });
       clearTyping();
     },
     [
@@ -347,6 +371,7 @@ export function useChatMessages(props: {
 
   return {
     messages,
+    abortStreams,
     isTyping,
     typingActor,
     assistancePhase,

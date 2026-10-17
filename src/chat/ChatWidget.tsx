@@ -122,6 +122,7 @@ export default function ChatWidget(props: WidgetProps) {
     appendUserMessage,
     clearMessages,
     handleServerJson,
+    abortStreams,
     clearTyping,
     setSender,
   } = useChatMessages({ toggleFormVisibility });
@@ -139,7 +140,7 @@ export default function ChatWidget(props: WidgetProps) {
 
       if (type === "ai_unavailable") {
         const event = payload as { message: string; code: string };
-        clearTyping();
+        abortStreams();
         if (
           [
             "temporarily_busy",
@@ -249,6 +250,7 @@ export default function ChatWidget(props: WidgetProps) {
         if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
         endChatTimerRef.current = undefined;
         setIsEndingChat(false);
+        abortStreams();
         const message = (payload as ServerErrorEvent).message;
         setBannerMessage({
           content:
@@ -269,6 +271,7 @@ export default function ChatWidget(props: WidgetProps) {
       clearTyping,
       conversationId,
       ensureSession,
+      abortStreams,
       handleServerJson,
       toggleFormVisibility,
       resetFormSubmission,
@@ -313,6 +316,10 @@ export default function ChatWidget(props: WidgetProps) {
   useEffect(() => {
     disconnectRef.current = disconnect;
   }, [disconnect]);
+
+  useEffect(() => {
+    if (readyState !== "open") abortStreams();
+  }, [readyState, abortStreams]);
 
   useEffect(() => {
     setSender(isOpen ? { readyState, sendJsonMessage } : null);
