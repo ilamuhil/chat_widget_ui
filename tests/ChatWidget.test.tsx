@@ -12,6 +12,12 @@ const callbacks = vi.hoisted(() => ({
   abortStreams: vi.fn(),
   setSender: vi.fn(),
 }));
+vi.mock("../src/chat/hooks/useWidgetProfile", () => ({
+  useWidgetProfile: () => ({
+    profile: { name: "Test bot", supportEmail: null, avatarUrl: null },
+    ready: true,
+  }),
+}));
 vi.mock("../src/api/verify", () => ({ verifyChat: vi.fn() }));
 vi.mock("../src/hooks/useIsMobile", () => ({ default: () => false }));
 vi.mock("../src/chat/hooks/useChatMessages", () => ({

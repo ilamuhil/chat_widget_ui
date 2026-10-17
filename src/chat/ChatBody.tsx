@@ -4,6 +4,7 @@ import { toHHmm } from "./utils/time";
 import DOMPurify from "dompurify";
 import { Marked } from "marked";
 import FormCapture from "./FormCapture";
+import RichMediaMessage from "./RichMediaMessage";
 
 const markdown = new Marked({
   breaks: true,
@@ -32,6 +33,58 @@ function openExternalLinksInNewTab(html: string) {
 
     return `<a${cleanAttributes} target="_blank" rel="noopener noreferrer">`;
   });
+}
+
+function isSafeImageUrl(value: string | null | undefined): value is string {
+  if (!value) return false;
+  try {
+    const url = new URL(value, window.location.href);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+const IMAGE_EXTENSIONS = /\.(?:avif|gif|jpe?g|png|webp)(?:$|[?#])/i;
+
+function isKnownImageProxy(url: URL): boolean {
+  return (
+    (url.hostname.startsWith("encrypted-tbn") &&
+      url.hostname.endsWith(".gstatic.com")) ||
+    url.hostname === "external-content.duckduckgo.com"
+  );
+}
+
+function extractImagePreview(source: string): {
+  url: string;
+  caption: string;
+} | null {
+  const candidates = source.match(/https?:\/\/\S+/gi) ?? [];
+
+  for (const candidate of candidates) {
+    const value = candidate.replace(/[),.!?]+$/, "");
+    try {
+      const url = new URL(value);
+      let imageUrl: string | null = null;
+      if (IMAGE_EXTENSIONS.test(url.pathname) || isKnownImageProxy(url)) {
+        imageUrl = url.toString();
+      } else {
+        const nestedUrl = url.searchParams.get("u");
+        if (nestedUrl && IMAGE_EXTENSIONS.test(new URL(nestedUrl).pathname)) {
+          imageUrl = nestedUrl;
+        }
+      }
+      if (imageUrl) {
+        return {
+          url: imageUrl,
+          caption: source.replace(candidate, "").trim(),
+        };
+      }
+    } catch {
+      // Continue searching for another URL in the message.
+    }
+  }
+  return null;
 }
 
 export default function ChatBody(props: {
@@ -115,6 +168,18 @@ export default function ChatBody(props: {
             .replaceAll("</table>", "</table></div>"),
         );
         const html = openExternalLinksInNewTab(sanitizedHtml);
+        const imagePreview = message.imageUrl
+          ? { url: message.imageUrl, caption: "" }
+          : extractImagePreview(message.content);
+        const imageUrl = imagePreview?.url;
+        const captionRendered = imagePreview?.caption
+          ? markdown.parse(imagePreview.caption, { async: false })
+          : "";
+        const captionHtml = openExternalLinksInNewTab(
+          DOMPurify.sanitize(
+            typeof captionRendered === "string" ? captionRendered : "",
+          ),
+        );
         const isContinued = !!prev && prev.side === message.side;
         const showAvatar = message.side === "staff" && message.isLastOfGroup;
 
@@ -148,9 +213,24 @@ export default function ChatBody(props: {
             )}
           >
             <div
-              className={`${bubbleClassName} chat-markdown`}
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
+              className={[
+                bubbleClassName,
+                "chat-markdown",
+                imagePreview ? "chat-bubble-rich-media" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {isSafeImageUrl(imageUrl) ? (
+                <RichMediaMessage
+                  url={imageUrl}
+                  alt={message.fileName || "Image attachment"}
+                  captionHtml={captionHtml}
+                />
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: html }} />
+              )}
+            </div>
 
             {(showAvatar || showTimestamp) && (
               <div

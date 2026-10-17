@@ -1,7 +1,8 @@
 import FormCapture from "./FormCapture";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ChatImage from "../assets/chat.png";
-import { IconClose, IconEmail, IconFullscreen } from "../assets/icons";
+import WidgetHeader from "./WidgetHeader";
+import { useWidgetProfile } from "./hooks/useWidgetProfile";
 import useIsMobile from "../hooks/useIsMobile";
 import ChatBody from "./ChatBody";
 import ChatComposer from "./ChatComposer";
@@ -24,10 +25,6 @@ import type { ChatTheme } from "../widgetConfig";
 const MOBILE_MAX_WIDTH_PX = 768;
 const CLOSE_ANIMATION_MS = 320;
 const END_CHAT_WAVE_MS = 1500;
-const SUPPORT_TITLE = "Support";
-const SUPPORT_META = "Typically replies in ~5 min";
-const SUPPORT_EMAIL_HREF = "mailto:support@example.com";
-const BOT_NAME = "Assist Bot";
 const FORM_CAPTURED_KEY = "form_data";
 const FORM_CAPTURED_VALUE = "captured";
 
@@ -38,6 +35,10 @@ type WidgetProps = {
 };
 
 export default function ChatWidget(props: WidgetProps) {
+  const { profile, ready: profileReady } = useWidgetProfile(
+    props.api_key,
+    props.bot_id,
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [aiUnavailable, setAiUnavailable] = useState<string | null>(null);
   const [fallbackSaved, setFallbackSaved] = useState(false);
@@ -77,7 +78,6 @@ export default function ChatWidget(props: WidgetProps) {
     },
     [],
   );
-  const isOnline = true;
 
   const isMobile = useIsMobile(MOBILE_MAX_WIDTH_PX);
   const effectiveFullscreen = isMobile ? isOpen : isFullscreen;
@@ -352,6 +352,7 @@ export default function ChatWidget(props: WidgetProps) {
   }, []);
 
   const openChat = () => {
+    if (!profileReady) return;
     setIsChatEnded(false);
     setIsOpen(true);
     void ensureSession().catch(() => {
@@ -506,6 +507,9 @@ export default function ChatWidget(props: WidgetProps) {
           (isMobile && isOpen ? " hidden" : "")
         }
         type="button"
+        disabled={!profileReady}
+        aria-busy={!profileReady}
+        title={profileReady ? `Chat with ${profile.name}` : "Preparing chat"}
         aria-label="Open chat"
         aria-expanded={isOpen}
         aria-controls="chat-bubble-content"
@@ -563,75 +567,15 @@ export default function ChatWidget(props: WidgetProps) {
             <div className="chat-end-wave__shimmer" />
           </div>
         )}
-        <header className="chat-panel-header relative shrink-0">
-          <div className="flex items-center gap-3 px-3.5 pt-3.5 pb-2.5">
-            <div className="relative flex-none">
-              <img
-                className="chat-header-avatar h-11 w-11 rounded-full object-cover ring-2"
-                src={ChatImage}
-                alt=""
-              />
-              <span
-                className={[
-                  "chat-presence-dot absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2",
-                  isOnline ? "chat-presence-dot--online" : "",
-                ].join(" ")}
-                aria-hidden="true"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="chat-text-primary truncate text-[15px] font-semibold tracking-[-0.01em] leading-tight">
-                {BOT_NAME}
-              </div>
-              <div className="chat-text-muted mt-0.5 text-[11px] leading-tight">
-                {isOnline ? "Online now" : "Offline"}
-              </div>
-            </div>
-
-            <div className="inline-flex flex-none items-center gap-1">
-              <a
-                className="chat-icon-button pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm active:translate-y-px"
-                href={SUPPORT_EMAIL_HREF}
-                aria-label="Email support"
-              >
-                <IconEmail />
-              </a>
-
-              {!isMobile && (
-                <button
-                  className="chat-icon-button pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm active:translate-y-px"
-                  type="button"
-                  aria-label={
-                    isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
-                  }
-                  onClick={() => setIsFullscreen((v) => !v)}
-                >
-                  <IconFullscreen />
-                </button>
-              )}
-
-              <button
-                className="chat-icon-button pointer-events-auto inline-grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm active:translate-y-px"
-                type="button"
-                aria-label="Close chat"
-                onClick={closeChat}
-              >
-                <IconClose />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 px-3.5 pb-3 pt-1">
-            <div className="min-w-0">
-              <div className="chat-text-primary truncate text-xs font-semibold tracking-[-0.01em]">
-                {SUPPORT_TITLE}
-              </div>
-              <div className="chat-text-muted mt-0.5 text-[11px] leading-tight">
-                {SUPPORT_META}
-              </div>
-            </div>
-          </div>
-        </header>
+        <WidgetHeader
+          profile={profile}
+          humanMode={isSupportAgentConnected || assistancePhase === "searching"}
+          agentConnected={isSupportAgentConnected}
+          isMobile={isMobile}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen((v) => !v)}
+          onClose={closeChat}
+        />
         <InfoBanner
           message={bannerMessage}
           onClose={() =>

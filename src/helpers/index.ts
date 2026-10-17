@@ -5,6 +5,8 @@ type Message = {
   contentType: string;
   timestamp: string;
   agentName?: string;
+  imageUrl?: string;
+  fileName?: string;
 };
 export type MessageSide = "user" | "staff";
 type MessageMeta = Message & {

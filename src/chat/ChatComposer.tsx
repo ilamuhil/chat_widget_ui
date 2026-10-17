@@ -21,11 +21,20 @@ const handleFileUpload = async (
     throw new Error("File size must be less than 5MB");
   }
 
-  // only pdf, docx, img, txt files are allowed
-  const allowedExtensions = ["pdf", "docx", "img", "txt"];
+  // Support common image formats alongside document attachments.
+  const allowedExtensions = [
+    "pdf",
+    "docx",
+    "txt",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+  ];
   const extension = file.name.split(".").pop();
   if (!extension || !allowedExtensions.includes(extension)) {
-    throw new Error("Allowed file types are pdf, docx, img, txt");
+    throw new Error("Allowed file types are images, pdf, docx, and txt");
   }
 
   const formData = new FormData();
@@ -64,12 +73,25 @@ const handleFileUpload = async (
       serverMessage ?? `Failed to upload file (${response.status})`,
     );
   }
-  return `${file.name}`;
+  const result = (await response.json()) as { url?: unknown };
+  return {
+    name: file.name,
+    type: file.type,
+    url: typeof result.url === "string" ? result.url : null,
+  };
 };
 
 export default function ChatComposer(props: {
   onSend: (
-    message: string | { type: "file"; file_key: string },
+    message:
+      | {
+          type: "file";
+          file_key: string;
+          file_url?: string;
+          file_name?: string;
+          mime_type?: string;
+        }
+      | string,
   ) => Promise<boolean>;
   showFormCapture: boolean;
   onBannerMessage: (message: BannerMessage) => void;
@@ -98,8 +120,8 @@ export default function ChatComposer(props: {
   const onFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setFileUploading(true);
-      const fileKey = await handleFileUpload(event, props.token);
-      if (!fileKey) {
+      const file = await handleFileUpload(event, props.token);
+      if (!file) {
         props.onBannerMessage({
           content: "No file was selected",
           variant: "warning",
@@ -108,7 +130,10 @@ export default function ChatComposer(props: {
       }
       await props.onSend({
         type: "file",
-        file_key: fileKey,
+        file_key: file.name,
+        file_url: file.url ?? undefined,
+        file_name: file.name,
+        mime_type: file.type,
       });
       props.onBannerMessage({
         content: "File uploaded successfully",

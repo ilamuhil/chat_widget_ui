@@ -217,6 +217,8 @@ export function useChatMessages(props: {
     ) => {
       //Send the message to the server.
       const sender = senderRef.current;
+      const fileContent =
+        typeof content !== "string" && "file_key" in content ? content : null;
       let type: "message" | "file" | "form_capture" = "message";
       if (sender) {
         //3 types of message are sent to the server : file message indicating that a file has been uploaded to the server.
@@ -238,6 +240,16 @@ export function useChatMessages(props: {
           supports_streaming: true,
           type,
           content: payload,
+          ...(fileContent?.file_url
+            ? {
+                image_url: fileContent.mime_type?.startsWith("image/")
+                  ? fileContent.file_url
+                  : undefined,
+                file_url: fileContent.file_url,
+                file_name: fileContent.file_name,
+                mime_type: fileContent.mime_type,
+              }
+            : {}),
         });
         if (type !== "form_capture") toggleFormVisibility();
         playBopSound();
@@ -248,9 +260,26 @@ export function useChatMessages(props: {
       if (!isFormCaptureData) {
         const outgoing: ChatMessage = {
           role: "user",
-          content: content as string,
-          contentType: isFormCaptureData ? "form_capture" : "message",
+          content:
+            typeof content === "string"
+              ? content
+              : fileContent
+                ? fileContent.file_name || fileContent.file_key
+                : "",
+          contentType: fileContent?.mime_type
+            ? fileContent.mime_type
+            : isFormCaptureData
+              ? "form_capture"
+              : "message",
           timestamp: formatTimestamp(new Date()),
+          ...(fileContent?.file_url
+            ? {
+                imageUrl: fileContent.mime_type?.startsWith("image/")
+                  ? fileContent.file_url
+                  : undefined,
+                fileName: fileContent.file_name,
+              }
+            : {}),
         };
         setMessages((prev) => [...prev, outgoing]);
       }
@@ -266,21 +295,44 @@ export function useChatMessages(props: {
       const obj = payload as Record<string, unknown>;
 
       if (obj.type === "message_abort" && typeof obj.stream_id === "string") {
-        setMessages((prev) => prev.filter((message) => message.streamId !== obj.stream_id));
+        setMessages((prev) =>
+          prev.filter((message) => message.streamId !== obj.stream_id),
+        );
         clearTyping();
         return;
       }
       if (obj.type === "message_delta") {
-        if (typeof obj.stream_id !== "string" || typeof obj.delta !== "string" || !obj.delta) return;
+        if (
+          typeof obj.stream_id !== "string" ||
+          typeof obj.delta !== "string" ||
+          !obj.delta
+        )
+          return;
         const streamId = obj.stream_id;
         const delta = obj.delta;
         setMessages((prev) => {
-          const index = prev.findIndex((message) => message.streamId === streamId);
+          const index = prev.findIndex(
+            (message) => message.streamId === streamId,
+          );
           if (index >= 0) {
             if (!prev[index].streaming) return prev;
-            return prev.map((message, i) => i === index ? { ...message, content: message.content + delta } : message);
+            return prev.map((message, i) =>
+              i === index
+                ? { ...message, content: message.content + delta }
+                : message,
+            );
           }
-          return [...prev, { role: "ai", content: delta, contentType: "text", timestamp: formatTimestamp(new Date()), streamId, streaming: true }];
+          return [
+            ...prev,
+            {
+              role: "ai",
+              content: delta,
+              contentType: "text",
+              timestamp: formatTimestamp(new Date()),
+              streamId,
+              streaming: true,
+            },
+          ];
         });
         clearTyping();
         return;
@@ -340,6 +392,14 @@ export function useChatMessages(props: {
       if (!content) return;
 
       const role = resolveDisplayRole(ev.role);
+      const imageUrl =
+        typeof ev.image_url === "string"
+          ? ev.image_url
+          : typeof ev.file_url === "string" &&
+              typeof obj.mime_type === "string" &&
+              obj.mime_type.startsWith("image/")
+            ? ev.file_url
+            : undefined;
       if (role === "support_agent") {
         setIsSupportAgentConnected(true);
         if (assistancePhaseRef.current === "searching") {
@@ -348,13 +408,28 @@ export function useChatMessages(props: {
       }
 
       const finalMessage: ChatMessage = {
-        role, content, contentType: "text", timestamp: formatTimestamp(new Date()),
-        ...(typeof ev.agentName === "string" ? { agentName: ev.agentName } : {}),
-        ...(typeof obj.stream_id === "string" ? { streamId: obj.stream_id, streaming: false } : {}),
+        role,
+        content,
+        contentType: "text",
+        timestamp: formatTimestamp(new Date()),
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(typeof ev.file_name === "string" ? { fileName: ev.file_name } : {}),
+        ...(typeof ev.agentName === "string"
+          ? { agentName: ev.agentName }
+          : {}),
+        ...(typeof obj.stream_id === "string"
+          ? { streamId: obj.stream_id, streaming: false }
+          : {}),
       };
       setMessages((prev) => {
-        const index = finalMessage.streamId ? prev.findIndex((message) => message.streamId === finalMessage.streamId) : -1;
-        return index < 0 ? [...prev, finalMessage] : prev.map((message, i) => i === index ? finalMessage : message);
+        const index = finalMessage.streamId
+          ? prev.findIndex(
+              (message) => message.streamId === finalMessage.streamId,
+            )
+          : -1;
+        return index < 0
+          ? [...prev, finalMessage]
+          : prev.map((message, i) => (i === index ? finalMessage : message));
       });
       clearTyping();
     },

@@ -7,6 +7,8 @@ export type ChatMessage = {
   content: string;
   contentType: string;
   timestamp: string;
+  imageUrl?: string;
+  fileName?: string;
   agentName?: string;
   streamId?: string;
   streaming?: boolean;
@@ -21,6 +23,9 @@ export type FormCaptureData = {
 
 export type FileMessage = {
   file_key: string;
+  file_url?: string;
+  file_name?: string;
+  mime_type?: string;
 };
 
 /** Counsellor search loader and its short result line. */
@@ -52,6 +57,9 @@ export type ServerMessageEvent = {
   agentName?: string;
   message?: unknown;
   content?: unknown;
+  image_url?: string;
+  file_url?: string;
+  file_name?: string;
   conversation_id?: string;
 };
 
