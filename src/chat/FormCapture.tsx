@@ -10,6 +10,7 @@ export default function FormCapture(props: {
   setName: (name: string) => void;
   layoutFullscreen?: boolean;
   submitLabel?: string;
+  isSubmitting?: boolean;
 }) {
   const {
     onFormSubmit,
@@ -23,8 +24,9 @@ export default function FormCapture(props: {
     setName,
     layoutFullscreen = false,
     submitLabel = "Continue to chat",
+    isSubmitting = false,
   } = props;
-  const disableFormSubmit = !email.trim() || !name.trim();
+  const disableFormSubmit = isSubmitting || !email.trim() || !name.trim();
 
   return (
     <div
@@ -44,8 +46,10 @@ export default function FormCapture(props: {
             ? "chat-lead-capture-panel max-w-sm px-7 py-7"
             : "h-full min-h-0 flex-1 px-4 py-3",
         ].join(" ")}
+        aria-busy={isSubmitting}
         onSubmit={(event) => {
           event.preventDefault();
+          if (disableFormSubmit) return;
           onFormSubmit();
         }}
       >

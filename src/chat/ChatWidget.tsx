@@ -59,6 +59,24 @@ export default function ChatWidget(props: WidgetProps) {
   const endChatTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
+  const pendingFormRef = useRef<FormCaptureData | null>(null);
+  const formSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const authRecoveryAttemptsRef = useRef(0);
+  const resetFormSubmission = useCallback(() => {
+    pendingFormRef.current = null;
+    if (formSubmitTimerRef.current) clearTimeout(formSubmitTimerRef.current);
+    formSubmitTimerRef.current = undefined;
+    setIsSubmittingForm(false);
+  }, []);
+  useEffect(
+    () => () => {
+      if (formSubmitTimerRef.current) clearTimeout(formSubmitTimerRef.current);
+    },
+    [],
+  );
   const isOnline = true;
 
   const isMobile = useIsMobile(MOBILE_MAX_WIDTH_PX);
@@ -89,9 +107,9 @@ export default function ChatWidget(props: WidgetProps) {
   const toggleFormVisibility = useCallback((show: boolean = false) => {
     setShowFormCapture(show);
     if (show) {
-      localStorage.setItem(FORM_CAPTURED_KEY, FORM_CAPTURED_VALUE);
-    } else {
       localStorage.removeItem(FORM_CAPTURED_KEY);
+    } else {
+      localStorage.setItem(FORM_CAPTURED_KEY, FORM_CAPTURED_VALUE);
     }
   }, []);
 
@@ -145,6 +163,10 @@ export default function ChatWidget(props: WidgetProps) {
       ) {
         setAiUnavailable(null);
       }
+      if (type === "form_capture") {
+        resetFormSubmission();
+        setBannerMessage({ content: null, variant: "info" });
+      }
       if (
         type === "form_capture" &&
         (payload as { fallback?: string }).fallback === "contact"
@@ -154,6 +176,10 @@ export default function ChatWidget(props: WidgetProps) {
       }
       if (type === "conversation_ready") {
         const event = payload as { form_required: boolean };
+        authRecoveryAttemptsRef.current = 0;
+        if (pendingFormRef.current && !event.form_required)
+          resetFormSubmission();
+        setBannerMessage({ content: null, variant: "info" });
         setAiUnavailable(null);
         setFallbackSaved(false);
         setReadyConversationId(
@@ -202,7 +228,7 @@ export default function ChatWidget(props: WidgetProps) {
         });
         // A queued message can meet a closed session during socket reconnect.
         // Keep that first message and authenticate a fresh conversation now.
-        if (reconnectMessages.current.length > 0) {
+        if (reconnectMessages.current.length > 0 || pendingFormRef.current) {
           void ensureSession()
             .then(() => setIsChatEnded(false))
             .catch(() => {
@@ -219,6 +245,7 @@ export default function ChatWidget(props: WidgetProps) {
       // Server errors surface in the banner instead of the message list so they
       // don't read like part of the conversation.
       if (type === "error") {
+        resetFormSubmission();
         if (endChatTimerRef.current) clearTimeout(endChatTimerRef.current);
         endChatTimerRef.current = undefined;
         setIsEndingChat(false);
@@ -244,16 +271,43 @@ export default function ChatWidget(props: WidgetProps) {
       ensureSession,
       handleServerJson,
       toggleFormVisibility,
+      resetFormSubmission,
     ],
   );
 
-  const { sendJsonMessage, readyState, disconnect } = useChatSocket({
+  const onSocketClosed = useCallback(() => {
+    clearTyping();
+    setReadyConversationId(null);
+  }, [clearTyping]);
+
+  const onAuthenticationRejected = useCallback(() => {
+    if (authRecoveryAttemptsRef.current >= 1) {
+      resetFormSubmission();
+      setBannerMessage({
+        content: "Could not connect. Please try again.",
+        variant: "error",
+      });
+      return;
+    }
+    authRecoveryAttemptsRef.current += 1;
+    void ensureSession(true).catch(() => {
+      resetFormSubmission();
+      setBannerMessage({
+        content:
+          "Could not connect. Your details are still here. Please try again.",
+        variant: "error",
+      });
+    });
+  }, [ensureSession, resetFormSubmission]);
+
+  const { sendJsonMessage, readyState, disconnect, reconnect } = useChatSocket({
     isOpen,
     token,
     conversationId,
     onServerMessage,
     bot_id: props.bot_id,
-    onCloseCleanUp: clearTyping,
+    onCloseCleanUp: onSocketClosed,
+    onAuthenticationRejected,
   });
 
   useEffect(() => {
@@ -299,6 +353,7 @@ export default function ChatWidget(props: WidgetProps) {
   };
 
   const closeChat = () => {
+    resetFormSubmission();
     if (layoutFullscreen) setClosingFullscreen(true);
     setIsOpen(false);
     clearTyping();
@@ -313,9 +368,10 @@ export default function ChatWidget(props: WidgetProps) {
     }
     reconnectMessages.current.push(content);
     try {
+      await ensureSession();
+      if (readyState === "closed") reconnect();
       if (isChatEnded || !token) {
         setReadyConversationId(null);
-        await ensureSession();
         setIsChatEnded(false);
         setEndChatRequested(false);
       }
@@ -376,29 +432,54 @@ export default function ChatWidget(props: WidgetProps) {
     el.scrollTop = el.scrollHeight;
   }, [messages, isTyping, assistancePhase]);
 
+  useEffect(() => {
+    if (!conversationReady || readyState !== "open") return;
+    const pending = pendingFormRef.current;
+    if (!pending) return;
+    pendingFormRef.current = null;
+    appendUserMessage(pending, true);
+  }, [conversationReady, readyState, appendUserMessage]);
+
   const handleFormSubmit = () => {
-    const [normalizedEmail, normalizedPhone, normalizedName] = [
-      email.trim(),
-      phone.trim(),
-      name.trim(),
-    ];
-    if (!normalizedEmail || !normalizedName) return;
-    if (readyState !== "open") {
+    if (isSubmittingForm) return;
+    const form = {
+      email: email.trim(),
+      phone: phone.trim(),
+      name: name.trim(),
+      consentToContact,
+    };
+    if (!form.email || !form.name) return;
+    setIsSubmittingForm(true);
+    authRecoveryAttemptsRef.current = 0;
+    formSubmitTimerRef.current = setTimeout(() => {
+      resetFormSubmission();
       setBannerMessage({
-        content: "Still connecting. Wait a moment, then submit the form again.",
+        content:
+          "Could not connect or save your details. Your entries are still here. Please try again.",
         variant: "warning",
       });
+    }, 30_000);
+    if (conversationReady && readyState === "open") {
+      appendUserMessage(form, true);
       return;
     }
-    appendUserMessage(
-      {
-        email: normalizedEmail,
-        phone: normalizedPhone,
-        name: normalizedName,
-        consentToContact,
-      },
-      true,
-    );
+    pendingFormRef.current = form;
+    setBannerMessage({
+      content: "Connecting… Your details will be submitted automatically.",
+      variant: "info",
+    });
+    void ensureSession()
+      .then(() => {
+        if (readyState === "closed") reconnect();
+      })
+      .catch(() => {
+        resetFormSubmission();
+        setBannerMessage({
+          content:
+            "Could not connect. Your details are still here. Please try again.",
+          variant: "error",
+        });
+      });
   };
 
   return (
@@ -622,6 +703,14 @@ export default function ChatWidget(props: WidgetProps) {
                 showFormCapture={showFormCapture}
                 layoutFullscreen={layoutFullscreen}
                 onFormSubmit={handleFormSubmit}
+                isSubmittingForm={isSubmittingForm}
+                formSubmitLabel={
+                  isSubmittingForm
+                    ? conversationReady && readyState === "open"
+                      ? "Saving…"
+                      : "Connecting…"
+                    : "Continue to chat"
+                }
                 email={email}
                 phone={phone}
                 name={name}

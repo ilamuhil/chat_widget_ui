@@ -37,6 +37,8 @@ function openExternalLinksInNewTab(html: string) {
 export default function ChatBody(props: {
   messages: Array<ChatMessage>;
   onFormSubmit: () => void;
+  isSubmittingForm?: boolean;
+  formSubmitLabel?: string;
   email: string;
   phone: string;
   name: string;
@@ -51,6 +53,8 @@ export default function ChatBody(props: {
   const {
     messages,
     onFormSubmit,
+    isSubmittingForm,
+    formSubmitLabel,
     email,
     phone,
     setEmail,
@@ -68,6 +72,8 @@ export default function ChatBody(props: {
     return (
       <FormCapture
         onFormSubmit={onFormSubmit}
+        isSubmitting={isSubmittingForm}
+        submitLabel={formSubmitLabel}
         email={email}
         phone={phone}
         name={name}

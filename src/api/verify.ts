@@ -29,6 +29,7 @@ export async function verifyChat({
   }
   const response = await fetch(`${API_URL_BASE}/api/auth/user/token`, {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       "Content-Type": "application/json",
     },

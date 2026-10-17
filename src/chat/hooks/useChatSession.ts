@@ -61,74 +61,94 @@ export function useChatSession(params: UseChatSessionParams) {
     }));
   }, [bot_id]);
 
-  const ensureSession = useCallback((): Promise<void> => {
-    if (typeof window === "undefined") return Promise.resolve();
-    if (authenticationRef.current) return authenticationRef.current;
-    const keys = sessionStorageKeys(bot_id);
-
-    const authenticate = async () => {
-      const existingConversationId = localStorage.getItem(keys.conversationId);
-      const existingToken = localStorage.getItem(keys.token);
-      const tokenExpired = existingToken ? isJwtExpired(existingToken) : true;
-
-      if (existingConversationId && existingToken && !tokenExpired) {
-        if (!localStorage.getItem(keys.visitor)) {
-          localStorage.setItem(keys.visitor, crypto.randomUUID());
+  const ensureSession = useCallback(
+    function authenticateSession(forceRefresh = false): Promise<void> {
+      if (typeof window === "undefined") return Promise.resolve();
+      if (authenticationRef.current) {
+        if (forceRefresh) {
+          // A rejection can race a cached-session check that is still settling.
+          // Honor forced refresh after that operation, rather than reusing it.
+          return authenticationRef.current.then(
+            () => authenticateSession(true),
+            () => authenticateSession(true),
+          );
         }
+        return authenticationRef.current;
+      }
+      const keys = sessionStorageKeys(bot_id);
+
+      const authenticate = async () => {
+        const existingConversationId = localStorage.getItem(
+          keys.conversationId,
+        );
+        const existingToken = localStorage.getItem(keys.token);
+        const tokenExpired = existingToken ? isJwtExpired(existingToken) : true;
+
+        if (
+          !forceRefresh &&
+          existingConversationId &&
+          existingToken &&
+          !tokenExpired
+        ) {
+          if (!localStorage.getItem(keys.visitor)) {
+            localStorage.setItem(keys.visitor, crypto.randomUUID());
+          }
+          setState((prev) => ({
+            ...prev,
+            conversationId: existingConversationId,
+            token: existingToken,
+            isAuthenticating: false,
+            authFailed: false,
+          }));
+          return;
+        }
+
+        // If token is expired/invalid, remove it so we don't try to reuse it.
+        if (tokenExpired || forceRefresh) {
+          localStorage.removeItem(keys.token);
+        }
+
         setState((prev) => ({
           ...prev,
-          conversationId: existingConversationId,
-          token: existingToken,
-          isAuthenticating: false,
+          isAuthenticating: true,
           authFailed: false,
         }));
-        return;
-      }
-
-      // If token is expired/invalid, remove it so we don't try to reuse it.
-      if (tokenExpired) {
-        localStorage.removeItem(keys.token);
-      }
-
-      setState((prev) => ({
-        ...prev,
-        isAuthenticating: true,
-        authFailed: false,
-      }));
-      try {
-        const data = await verifyChat({ api_key });
-        localStorage.setItem(keys.conversationId, data.conversation_id);
-        localStorage.setItem(keys.token, data.token);
-        localStorage.setItem(keys.botConfig, JSON.stringify(data.bot_config));
-        if (!localStorage.getItem(keys.visitor)) {
-          localStorage.setItem(keys.visitor, crypto.randomUUID());
+        try {
+          const data = await verifyChat({ api_key });
+          localStorage.setItem(keys.conversationId, data.conversation_id);
+          localStorage.setItem(keys.token, data.token);
+          localStorage.setItem(keys.botConfig, JSON.stringify(data.bot_config));
+          if (!localStorage.getItem(keys.visitor)) {
+            localStorage.setItem(keys.visitor, crypto.randomUUID());
+          }
+          setState((prev) => ({
+            ...prev,
+            conversationId: data.conversation_id,
+            token: data.token,
+            bot_config: data.bot_config,
+            isAuthenticating: false,
+            authFailed: false,
+          }));
+        } catch (e) {
+          setState((prev) => ({
+            ...prev,
+            isAuthenticating: false,
+            authFailed: true,
+          }));
+          throw e;
         }
-        setState((prev) => ({
-          ...prev,
-          conversationId: data.conversation_id,
-          token: data.token,
-          bot_config: data.bot_config,
-          isAuthenticating: false,
-          authFailed: false,
-        }));
-      } catch (e) {
-        setState((prev) => ({
-          ...prev,
-          isAuthenticating: false,
-          authFailed: true,
-        }));
-        throw e;
-      }
-    };
+      };
 
-    const authentication = authenticate().finally(() => {
-      if (authenticationRef.current === authentication) {
-        authenticationRef.current = null;
-      }
-    });
-    authenticationRef.current = authentication;
-    return authentication;
-  }, [api_key, bot_id]);
+      const authentication = authenticate().finally(() => {
+        if (authenticationRef.current === authentication) {
+          authenticationRef.current = null;
+        }
+      });
+      authenticationRef.current = authentication;
+      return authentication;
+    },
+    [api_key, bot_id],
+  );
 
   useEffect(() => {
     if (!state.token) return;
