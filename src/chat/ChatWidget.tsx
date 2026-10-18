@@ -164,6 +164,20 @@ export default function ChatWidget(props: WidgetProps) {
       ) {
         setAiUnavailable(null);
       }
+      if (type === "conversation_mode") {
+        const event = payload as { mode: string; agent_connected: boolean };
+        if (event.mode === "human") {
+          setAiUnavailable(null);
+          setBannerMessage({
+            content: event.agent_connected
+              ? null
+              : "Your counsellor is reconnecting. Your messages will be saved.",
+            variant: "info",
+          });
+        } else {
+          setBannerMessage({ content: null, variant: "info" });
+        }
+      }
       if (type === "form_capture") {
         resetFormSubmission();
         setBannerMessage({ content: null, variant: "info" });

@@ -75,6 +75,7 @@ export function useChatMessages(props: {
   const [assistancePhase, setAssistancePhase] = useState<AssistancePhase>(null);
   const assistancePhaseRef = useRef<AssistancePhase>(null);
   const [isSupportAgentConnected, setIsSupportAgentConnected] = useState(false);
+  const modeVersionRef = useRef<{ conversation: string; version: number } | null>(null);
   const senderRef = useRef<Sender | null>(null);
   const typingFailsafeRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -294,6 +295,22 @@ export function useChatMessages(props: {
       if (typeof payload !== "object" || payload === null) return;
       const obj = payload as Record<string, unknown>;
 
+      if (obj.type === "conversation_mode") {
+        if (typeof obj.conversation_id !== "string" || typeof obj.version !== "number") return;
+        const previous = modeVersionRef.current;
+        if (previous?.conversation === obj.conversation_id && obj.version < previous.version) return;
+        modeVersionRef.current = { conversation: obj.conversation_id, version: obj.version };
+        if (obj.mode !== "ai" && obj.mode !== "human") return;
+        clearTyping();
+        clearAssistanceFailsafe();
+        setIsSupportAgentConnected(obj.mode === "human");
+        setPhase(null);
+        if (obj.mode === "human") {
+          setMessages((prev) => prev.filter((message) => !message.streaming));
+        }
+        return;
+      }
+
       if (obj.type === "message_abort" && typeof obj.stream_id === "string") {
         setMessages((prev) =>
           prev.filter((message) => message.streamId !== obj.stream_id),
@@ -441,6 +458,8 @@ export function useChatMessages(props: {
       resolveDisplayRole,
       showAssistanceResult,
       startAssistanceSearch,
+      clearAssistanceFailsafe,
+      setPhase,
     ],
   );
 
