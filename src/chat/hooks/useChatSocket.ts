@@ -182,6 +182,18 @@ export function useChatSocket(params: UseChatSocketParams) {
           try {
             const parsed = JSON.parse(raw) as { type?: unknown };
             if (
+              parsed?.type === "connection_authenticated" &&
+              (parsed as { conversation_id?: unknown }).conversation_id === conversationId
+            ) {
+              clearStartupTimer();
+              // Authentication succeeded; allow bounded time for cold database setup.
+              startupTimer = setTimeout(() => {
+                if (socketRef.current === socket && !serverReadyRef.current)
+                  socket.close(4000, "Conversation setup timed out");
+              }, 30_000);
+              return;
+            }
+            if (
               parsed?.type === "conversation_ready" &&
               (parsed as { conversation_id?: unknown }).conversation_id ===
                 conversationId

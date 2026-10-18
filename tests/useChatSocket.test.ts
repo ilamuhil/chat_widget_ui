@@ -104,3 +104,26 @@ it("bounds retries when TCP opens but application authentication never finishes"
   expect(FakeSocket.instances).toHaveLength(6);
   expect(result.current.readyState).toBe("closed");
 });
+
+
+it("keeps authenticated cold startup alive without sending application frames early", async () => {
+  const { result } = renderHook(() => useChatSocket(params));
+  await act(async () => latestSocket().open());
+  act(() => vi.advanceTimersByTime(10_000));
+  act(() => latestSocket().receive({ type: "connection_authenticated", conversation_id: "conversation" }));
+  act(() => result.current.sendJsonMessage({ type: "message", message: "queued" }));
+  act(() => vi.advanceTimersByTime(20_000));
+  expect(latestSocket().close).not.toHaveBeenCalled();
+  expect(latestSocket().send).toHaveBeenCalledTimes(1);
+  act(() => latestSocket().receive({ type: "conversation_ready", conversation_id: "conversation" }));
+  expect(result.current.readyState).toBe("open");
+  expect(latestSocket().send).toHaveBeenCalledTimes(2);
+});
+
+it("still times out when authenticated conversation setup never finishes", async () => {
+  renderHook(() => useChatSocket(params));
+  await act(async () => latestSocket().open());
+  act(() => latestSocket().receive({ type: "connection_authenticated", conversation_id: "conversation" }));
+  act(() => vi.advanceTimersByTime(30_000));
+  expect(latestSocket().close).toHaveBeenCalledWith(4000, "Conversation setup timed out");
+});
